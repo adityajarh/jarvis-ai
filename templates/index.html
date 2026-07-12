@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JARVIS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont/tabler-icons.min.css">
+</head>
+
+<script>window.CURRENT_USER_NAME = "{{ session.get('user_name', 'User') }}";</script>
+
+<body>
+
+<div class="container">
+
+    <div class="top-bar">
+    <button id="profilePill" class="profile-pill">
+    <i class="ti ti-user-circle"></i>
+    <span id="profileName">User</span>
+</button>
+<div id="dropdownMenu" style="display:none; position:absolute; top:44px; left:0; background:var(--bg-card); border-radius:14px; box-shadow:var(--shadow-modal); width:160px; padding:6px; z-index:20;">
+    <button id="logoutOpt" style="width:100%; text-align:left; background:none; border:none; padding:10px 12px; border-radius:10px; font-size:13px; color:var(--danger); cursor:pointer; display:flex; align-items:center; gap:8px;">
+        <i class="ti ti-logout"></i> Log out
+    </button>
+</div>
+</div>
+
+    <h1>JARVIS</h1>
+
+    <div class="status-card">
+        <p><span class="status-dot"></span><strong>Status:</strong> ONLINE</p>
+        <p><strong>Time:</strong> <span id="clock">00:00:00</span></p>
+        <p><strong>Voice:</strong> <button id="voiceToggle" onclick="toggleVoice()">OFF</button></p>
+        <p><strong>Theme:</strong> <button id="themeToggle" onclick="toggleTheme()">LIGHT</button></p>
+</div>
+    
+    <div class="top-actions">
+    <button id="notesBtn">
+        Notes
+    </button>
+</div>
+
+    <div class="command-section">
+    <input type="text" id="commandBox" placeholder="Try: open youtube">
+    <button id="micBtn" onclick="startListening()" title="Speak command">
+    <i class="ti ti-microphone"></i>
+</button>
+    <button id="execBtn" onclick="sendCommand()">Ask JARVIS</button>
+</div>
+
+    <div class="output-card" id="outputCard">
+        <p id="output">Waiting for command...</p>
+    </div>
+
+    <div class="history-card" id="historyCard" style="display:none;">
+    <p class="history-title">Recent commands</p>
+    <ul id="historyList"></ul>
+</div>
+
+<div id="deleteModal" class="delete-overlay">
+    <div class="delete-modal">
+        <div class="delete-icon">
+            <i class="ti ti-trash"></i>
+        </div>
+        <h3 class="delete-title">Delete Note?</h3>
+        <p class="delete-message">This note will be permanently deleted and cannot be recovered.</p>
+        <div class="delete-actions">
+            <button class="delete-cancel-btn" id="deleteCancelBtn">Cancel</button>
+            <button class="delete-confirm-btn" id="deleteConfirmBtn">Delete</button>
+        </div>
+    </div>
+</div>
+
+<div id="addNoteModal" class="add-note-overlay">
+    <div class="add-note-modal">
+        <div class="add-note-header">
+            <h3 class="add-note-title">New Note</h3>
+            <button class="add-note-close" id="addNoteCloseBtn">
+                <i class="ti ti-x"></i>
+            </button>
+        </div>
+        <div class="add-note-input-bar">
+            <textarea 
+                id="addNoteText" 
+                placeholder="Type your note here..."
+                rows="4"
+            ></textarea>
+            <button class="add-note-mic" id="addNoteMicBtn" title="Speak note">
+                <i class="ti ti-microphone"></i>
+            </button>
+        </div>
+        <div class="add-note-actions">
+            <button class="add-note-cancel" id="addNoteCancelBtn">Cancel</button>
+            <button class="add-note-save" id="addNoteSaveBtn">Save Note</button>
+        </div>
+    </div>
+</div>
+
+<div id="notesOverlay" class="notes-overlay">
+    <div class="notes-modal">
+       <div class="notes-header">
+    <h2 id="notesTitle">Notes</h2>
+    <button id="closeNotesBtn">
+    <i class="ti ti-x"></i>
+</button>
+</div>
+
+        <div class="notes-toolbar">
+
+    <input
+        type="text"
+        id="notesSearch"
+        placeholder="Search notes..."
+    >
+
+    <button
+        class="new-note-mini-btn"
+        onclick="openAddNoteModal()"
+    >
+        <i class="ti ti-file-pencil"></i>
+
+        <span>New Note</span>
+
+    </button>
+
+</div>
+        <div id="notesContent">
+            <p>No notes loaded yet.</p>
+        </div>
+    </div>
+</div>
+
+<button id="feedbackBtn" class="feedback-fab" aria-label="Give feedback">
+    <i class="ti ti-message-2"></i>
+    <span class="feedback-tooltip">Feedback</span>
+</button>
+
+<div id="feedbackOverlay" class="feedback-overlay">
+    <div class="feedback-modal">
+        <div class="feedback-header">
+            <h3>Send Feedback</h3>
+            <button id="feedbackCloseBtn"><i class="ti ti-x"></i></button>
+        </div>
+
+        <label class="feedback-label">Your name</label>
+        <input type="text" id="feedbackName" placeholder="Your name">
+
+        <label class="feedback-label">What's on your mind</label>
+        <div class="feedback-textarea-wrap">
+            <textarea id="feedbackDesc" rows="4" placeholder="Describe the issue or idea"></textarea>
+            <button id="feedbackMicBtn" class="feedback-mic-btn" title="Speak feedback">
+                <i class="ti ti-microphone"></i>
+            </button>
+        </div>
+
+        <label class="feedback-label">Screenshot (optional)</label>
+        <input type="file" id="feedbackImage" accept="image/*">
+
+        <div class="feedback-actions">
+            <button id="feedbackCancelBtn">Cancel</button>
+            <button id="feedbackSendBtn">Send</button>
+        </div>
+    </div>
+</div>
+
+<div id="feedbackToast" class="feedback-toast">
+    <i id="feedbackToastIcon" class="ti"></i>
+    <span id="feedbackToastText"></span>
+</div>
+
+<div id="nameOverlay" class="name-overlay">
+    <div class="name-modal">
+        <i class="ti ti-user-circle"></i>
+        <p class="name-modal-title">Welcome to JARVIS</p>
+        <p class="name-modal-subtitle">What's your name?</p>
+        <input type="text" id="nameInput" placeholder="Your name">
+        <button id="nameContinueBtn">Continue</button>
+    </div>
+</div>
+
+<div id="editNameOverlay" class="name-overlay">
+    <div class="name-modal">
+        <i class="ti ti-user-circle"></i>
+        <p class="name-modal-title">Edit your name</p>
+        <input type="text" id="editNameInput" placeholder="Your name">
+        <div class="name-modal-actions">
+            <button id="editNameCancelBtn" class="secondary-btn">Cancel</button>
+            <button id="editNameSaveBtn">Save</button>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+</html>

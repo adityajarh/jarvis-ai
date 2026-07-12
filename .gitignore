@@ -1,0 +1,19 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.log
+logs/
+
+# Runtime Data
+users.json
+notes.json
+reset_codes.json
+jarvis.log
+
+# IDE
+.vscode/
+
+# Legacy
+legacy/

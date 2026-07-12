@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JARVIS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont/tabler-icons.min.css">
+</head>
+<body>
+
+<div class="auth-wrapper">
+
+    <div id="signupCard" class="auth-card">
+        <p class="auth-title">Create your account</p>
+        <p class="auth-subtitle">Join JARVIS to get started</p>
+
+        <label class="auth-label">NAME</label>
+        <input type="text" id="signupName" placeholder="Your name">
+        <p class="auth-error" id="signupNameError"></p>
+
+        <label class="auth-label">EMAIL</label>
+        <input type="email" id="signupEmail" placeholder="you@example.com">
+        <p class="auth-error" id="signupEmailError"></p>
+
+        <label class="auth-label">PASSWORD</label>
+        <div class="auth-password-wrap">
+            <input type="password" id="signupPassword" placeholder="At least 8 characters">
+            <button type="button" class="auth-eye-btn" data-target="signupPassword"><i class="ti ti-eye"></i></button>
+        </div>
+        <div class="auth-strength-bars">
+            <div class="auth-bar" id="signupBar1"></div>
+            <div class="auth-bar" id="signupBar2"></div>
+            <div class="auth-bar" id="signupBar3"></div>
+        </div>
+        <p class="auth-strength-text" id="signupStrengthText">Use 8+ characters with uppercase, lowercase, a number, and a symbol</p>
+        <p class="auth-error" id="signupPasswordError"></p>
+
+        <button class="auth-submit-btn" id="signupSubmitBtn">Sign Up</button>
+
+        <p class="auth-switch">Already have an account? <span id="goToLogin">Log in</span></p>
+    </div>
+
+    <div id="loginCard" class="auth-card" style="display:none;">
+        <p class="auth-title">JARVIS</p>
+        <p class="auth-subtitle">Welcome back</p>
+
+        <label class="auth-label">EMAIL</label>
+        <input type="email" id="loginEmail" placeholder="you@example.com">
+        <p class="auth-error" id="loginEmailError"></p>
+
+        <label class="auth-label">PASSWORD</label>
+        <div class="auth-password-wrap">
+            <input type="password" id="loginPassword" placeholder="Your password">
+            <button type="button" class="auth-eye-btn" data-target="loginPassword"><i class="ti ti-eye"></i></button>
+        </div>
+        <p class="auth-error" id="loginPasswordError"></p>
+
+        <p class="auth-forgot-link" id="goToForgot">Forgot password?</p>
+
+        <button class="auth-submit-btn" id="loginSubmitBtn">Log In</button>
+
+        <p class="auth-switch">Don't have an account? <span id="goToSignup">Sign up</span></p>
+    </div>
+
+    <div id="forgotEmailCard" class="auth-card" style="display:none; text-align:center;">
+        <i class="ti ti-mail auth-icon"></i>
+        <p class="auth-title">Reset your password</p>
+        <p class="auth-subtitle">We'll send a code to your registered email</p>
+
+        <input type="email" id="forgotEmail" placeholder="you@example.com" style="text-align:center;">
+        <p class="auth-error" id="forgotEmailError"></p>
+
+        <button class="auth-submit-btn" id="sendCodeBtn">Send Code</button>
+        <p class="auth-switch" id="backToLoginFromEmail">Back to login</p>
+    </div>
+
+    <div id="forgotOtpCard" class="auth-card" style="display:none; text-align:center;">
+        <i class="ti ti-shield-lock auth-icon"></i>
+        <p class="auth-title">Enter the code</p>
+        <p class="auth-subtitle" id="otpSentTo">Sent to your email</p>
+
+        <div class="auth-otp-row">
+            <input maxlength="1" class="auth-otp-box">
+            <input maxlength="1" class="auth-otp-box">
+            <input maxlength="1" class="auth-otp-box">
+            <input maxlength="1" class="auth-otp-box">
+            <input maxlength="1" class="auth-otp-box">
+            <input maxlength="1" class="auth-otp-box">
+        </div>
+        <p class="auth-error" id="otpError"></p>
+
+        <button class="auth-submit-btn" id="verifyOtpBtn">Verify</button>
+
+        <p class="auth-switch" id="resendText">Resend code in <span id="resendTimer">30</span>s</p>
+        <p class="auth-switch" id="resendLink" style="display:none;">Resend code</p>
+    </div>
+
+    <div id="newPasswordCard" class="auth-card" style="display:none; text-align:center;">
+        <i class="ti ti-lock-check auth-icon" style="color:var(--success);"></i>
+        <p class="auth-title">Set new password</p>
+        <p class="auth-subtitle">Code verified. Choose a new password.</p>
+
+        <div class="auth-password-wrap">
+            <input type="password" id="newPassword" placeholder="New password">
+            <button type="button" class="auth-eye-btn" data-target="newPassword"><i class="ti ti-eye"></i></button>
+        </div>
+        <div class="auth-strength-bars">
+            <div class="auth-bar" id="newBar1"></div>
+            <div class="auth-bar" id="newBar2"></div>
+            <div class="auth-bar" id="newBar3"></div>
+        </div>
+
+        <input type="password" id="confirmPassword" placeholder="Confirm password" style="margin-top:12px;">
+        <p class="auth-error" id="newPasswordError"></p>
+
+        <button class="auth-submit-btn" id="updatePasswordBtn">Update Password</button>
+    </div>
+
+</div>
+
+<div id="authToast" class="feedback-toast">
+    <i id="authToastIcon" class="ti"></i>
+    <span id="authToastText"></span>
+</div>
+
+<script src="{{ url_for('static', filename='auth.js') }}"></script>
+</body>
+</html>

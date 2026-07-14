@@ -138,11 +138,10 @@
         </div>
     </div>
 
-    <!-- NEW FEEDBACK BUTTON -->
+    <!-- Feedback Button -->
     <button id="feedbackBtn" class="feedback-fab" onclick="openFeedbackModal()" aria-label="Give feedback">
-    <i class="ti ti-message-2"></i>
-    <span class="feedback-tooltip">Feedback</span>
-</button>
+        <i class="ti ti-message"></i>
+    </button>
 
     <div id="nameOverlay" class="name-overlay">
         <div class="name-modal">
@@ -173,67 +172,82 @@
                 <h3><i class="ti ti-info-circle"></i> About JARVIS</h3>
                 <button id="aboutCloseBtn"><i class="ti ti-x"></i></button>
             </div>
-            
             <div class="about-body">
-    <!-- v2.1.0 -->
-    <div class="about-version">
-        <span class="about-badge">v2.1.0</span>
-        <span class="about-date">July 2026</span>
-        <ul>
-            <li>Feedback module separated (modular structure)</li>
-            <li>iOS / iPadOS / macOS responsive feedback modal</li>
-            <li>Mic with improved voice recognition</li>
-            <li>Attach image with remove option</li>
-            <li>Dark mode fixes for feedback</li>
-            <li>Toast notifications for feedback</li>
-        </ul>
-    </div>
-    <div class="about-divider"></div>
+                <!-- v2.1.1 -->
+<div class="about-version">
+    <span class="about-badge">v2.1.1</span>
+    <span class="about-date">July 2026</span>
+    <ul>
+        <li>CSS cleanup and optimization</li>
+        <li>Mobile responsive fixes for feedback button</li>
+        <li>Dark mode improvements for feedback</li>
+        <li>Feedback button position and icon update</li>
+        <li>Scrollbar fixes for About modal</li>
+    </ul>
+</div>
+<div class="about-divider"></div>
 
-    <!-- v2.0 -->
-    <div class="about-version">
-        <span class="about-badge">v2.0</span>
-        <span class="about-date">July 2026</span>
-        <ul>
-            <li>Authentication with OTP verification</li>
-            <li>More secure login system</li>
-            <li>Edit name with toast notification</li>
-            <li>Profile dropdown menu</li>
-            <li>About section with version history</li>
-            <li>Footer with copyright</li>
-            <li>UI improvements</li>
-        </ul>
-    </div>
-    <div class="about-divider"></div>
+                <!-- v2.1.0 -->
+                <div class="about-version">
+                    <span class="about-badge">v2.1.0</span>
+                    <span class="about-date">July 2026</span>
+                    <ul>
+                        <li>Feedback module separated (modular structure)</li>
+                        <li>Mobile and laptop responsive feedback modal</li>
+                        <li>Improved microphone voice recognition</li>
+                        <li>Attach image with remove option</li>
+                        <li>Dark mode fixes for feedback</li>
+                        <li>Toast notifications for feedback</li>
+                    </ul>
+                </div>
+                <div class="about-divider"></div>
 
-    <!-- v1.0 -->
-    <div class="about-version">
-        <span class="about-badge about-legacy">v1.0</span>
-        <span class="about-date">June 2026</span>
-        <ul>
-            <li>Basic authentication (Signup/Login)</li>
-            <li>Notes system (Add/View/Delete)</li>
-            <li>AI chat with Groq Llama 3.3</li>
-            <li>Voice input (Speech Recognition)</li>
-            <li>Dark/Light mode</li>
-            <li>Email feedback system</li>
-        </ul>
-    </div>
-    <div class="about-divider"></div>
+                <!-- v2.0 -->
+                <div class="about-version">
+                    <span class="about-badge">v2.0</span>
+                    <span class="about-date">July 2026</span>
+                    <ul>
+                        <li>Authentication with OTP verification</li>
+                        <li>More secure login system</li>
+                        <li>Edit name with toast notification</li>
+                        <li>Profile dropdown menu</li>
+                        <li>About section with version history</li>
+                        <li>Footer with copyright</li>
+                        <li>UI improvements</li>
+                    </ul>
+                </div>
+                <div class="about-divider"></div>
 
-    <!-- Creator & Links -->
-    <div class="about-creator">
-        <p>Created by Aditya</p>
-        <div class="about-links">
-            <a href="https://github.com/adityajarh/jarvis-ai.git" target="_blank" rel="noopener noreferrer"><i class="ti ti-brand-github"></i> GitHub</a>
-            <a href="https://www.instagram.com/adityajarh/" target="_blank" rel="noopener noreferrer"><i class="ti ti-brand-instagram"></i> Instagram</a>
-            <a href="mailto:jarhisdevil@gmail.com"><i class="ti ti-mail"></i> Email</a>
+                <!-- v1.0 -->
+                <div class="about-version">
+                    <span class="about-badge about-legacy">v1.0</span>
+                    <span class="about-date">June 2026</span>
+                    <ul>
+                        <li>Basic authentication (Signup/Login)</li>
+                        <li>Notes system (Add/View/Delete)</li>
+                        <li>AI chat with Groq Llama 3.3</li>
+                        <li>Voice input (Speech Recognition)</li>
+                        <li>Dark/Light mode</li>
+                        <li>Email feedback system</li>
+                    </ul>
+                </div>
+                <div class="about-divider"></div>
+
+                <!-- Creator & Links -->
+                <div class="about-creator">
+                    <p>Created by Aditya</p>
+                    <div class="about-links">
+                        <a href="https://github.com/adityajarh/jarvis-ai.git" target="_blank" rel="noopener noreferrer"><i class="ti ti-brand-github"></i> GitHub</a>
+                        <a href="https://www.instagram.com/adityajarh/" target="_blank" rel="noopener noreferrer"><i class="ti ti-brand-instagram"></i> Instagram</a>
+                        <a href="mailto:jarhisdevil@gmail.com"><i class="ti ti-mail"></i> Email</a>
+                    </div>
+                </div>
+                <div class="about-powered">
+                    <p>Powered by Flask · Groq AI · PostgreSQL</p>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="about-powered">
-        <p>Powered by Flask · Groq AI · PostgreSQL</p>
-    </div>
-</div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
     <script src="{{ url_for('feedback.static', filename='feedback.js') }}"></script>

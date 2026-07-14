@@ -3,7 +3,7 @@ import os
 
 from flask import Flask, render_template, request, jsonify, session
 from brain import (
-    process_command, get_notes, send_feedback_email,
+    process_command, get_notes,
     create_user, verify_login, find_user_by_email,
     generate_reset_code, verify_reset_code, is_reset_verified,
     update_user_password, clear_reset_code, send_otp_email,
@@ -12,6 +12,8 @@ from brain import (
 from models import db, User, Note, ResetCode
 
 app = Flask(__name__)
+from feedback import feedback_bp
+app.register_blueprint(feedback_bp, url_prefix='/feedback')
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "jarvis-dev-secret-change-this")
 
 database_url = os.getenv("DATABASE_URL", "")
@@ -130,45 +132,6 @@ def command():
             "response": error_response
         })
 
-
-@app.route("/feedback", methods=["POST"])
-def feedback():
-    try:
-        name = request.form.get("name", "").strip()
-        description = request.form.get("description", "").strip()
-        image_data = request.form.get("image_data", "").strip()
-        image_filename = request.form.get("image_filename", "").strip()
-
-        if not name or not description:
-            return jsonify({
-                "success": False,
-                "message": "Name and description are required."
-            })
-
-        sent = send_feedback_email(
-            name,
-            description,
-            image_data if image_data else None,
-            image_filename if image_filename else None
-        )
-
-        if sent:
-            return jsonify({
-                "success": True,
-                "message": "Feedback sent."
-            })
-        else:
-            return jsonify({
-                "success": False,
-                "message": "Could not send feedback. Try again."
-            })
-
-    except Exception as e:
-        print("FEEDBACK ROUTE ERROR:", e)
-        return jsonify({
-            "success": False,
-            "message": "Something went wrong."
-        })
 
 @app.route("/signup/send-code", methods=["POST"])
 def signup_send_code():

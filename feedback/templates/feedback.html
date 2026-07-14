@@ -1,0 +1,40 @@
+<div class="feedback-overlay" id="feedbackOverlay">
+    <div class="feedback-modal">
+        <div class="feedback-header">
+            <h3>Send Feedback</h3>
+            <button id="feedbackCloseBtn"><i class="ti ti-x"></i></button>
+        </div>
+
+        <label class="feedback-label">Your name</label>
+        <input type="text" id="feedbackName" placeholder="Your name">
+
+        <label class="feedback-label">What's on your mind</label>
+        <div class="feedback-textarea-wrap">
+            <textarea id="feedbackDesc" rows="4" placeholder="Describe the issue or idea"></textarea>
+            <button id="feedbackMicBtn" class="feedback-mic-btn" title="Speak feedback">
+                <i class="ti ti-microphone"></i>
+            </button>
+        </div>
+
+        <label class="feedback-label">Attach Image (optional)</label>
+<div class="feedback-attach-wrap">
+    <label for="feedbackImage" class="feedback-attach-btn">
+        <i class="ti ti-photo"></i> Attach Image
+    </label>
+    <input type="file" id="feedbackImage" accept="image/*">
+    <span id="feedbackFileName" class="feedback-file-name">No file chosen</span>
+    <button id="feedbackRemoveFile" class="feedback-remove-file" style="display:none;">
+        <i class="ti ti-x"></i>
+    </button>
+</div>
+
+        <div class="feedback-actions">
+            <button id="feedbackSendBtn">Send</button>
+        </div>
+    </div>
+</div>
+
+<div id="feedbackToast" class="feedback-toast">
+    <i id="feedbackToastIcon" class="ti"></i>
+    <span id="feedbackToastText"></span>
+</div>

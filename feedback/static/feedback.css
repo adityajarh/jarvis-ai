@@ -1,0 +1,414 @@
+/* ============================================
+   FEEDBACK MODAL — iOS / iPadOS / macOS
+   ============================================ */
+
+/* ---------- BASE (Mobile First - iOS) ---------- */
+.feedback-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 200;
+    padding: 0;
+}
+
+.feedback-modal {
+    background: var(--bg-card);
+    border-radius: 24px 24px 0 0;
+    width: 100%;
+    max-width: 100%;
+    padding: 24px 20px 32px;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.15);
+    animation: feedbackSlideUp 0.35s ease;
+    box-sizing: border-box;
+}
+
+@keyframes feedbackSlideUp {
+    from { transform: translateY(40px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* ---------- HEADER ---------- */
+.feedback-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.feedback-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.feedback-header button {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: transparent !important;
+    color: var(--text-secondary);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: none !important;
+}
+
+.feedback-header button:hover,
+.feedback-remove-file:hover {
+    background: transparent !important;
+    color: var(--text-secondary) !important;
+    transform: none !important;
+    opacity: 1 !important;
+}
+
+/* ---------- FORM ---------- */
+.feedback-label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    margin-top: 14px;
+}
+
+#feedbackName,
+#feedbackDesc,
+#feedbackImage {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border-subtle);
+    font-size: 15px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+}
+
+#feedbackName:focus,
+#feedbackDesc:focus {
+    outline: none;
+    border-color: var(--accent) !important;
+    box-shadow: none !important;
+}
+
+.feedback-textarea-wrap {
+    position: relative;
+}
+
+.feedback-mic-btn {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: transparent !important;
+    color: var(--accent) !important;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: none !important;
+}
+
+.feedback-mic-btn.listening {
+    color: var(--danger) !important;
+}
+
+/* ---------- ACTIONS ---------- */
+.feedback-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.feedback-actions button {
+    flex: 1;
+    padding: 14px;
+    border-radius: 14px;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+#feedbackCancelBtn {
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
+}
+
+#feedbackSendBtn {
+    background: var(--accent);
+    color: #fff;
+}
+
+#feedbackSendBtn:disabled {
+    opacity: 0.6;
+}
+
+/* ---------- TOAST ---------- */
+.feedback-toast {
+    position: fixed;
+    top: -80px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 260px;
+    padding: 12px 18px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: top 0.35s ease;
+    z-index: 300;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.feedback-toast.success {
+    background: var(--success);
+    color: #fff;
+    top: 24px;
+}
+
+.feedback-toast.error {
+    background: var(--danger);
+    color: #fff;
+    top: 24px;
+}
+
+/* ============================================
+   TABLET (iPadOS Style)
+   ============================================ */
+@media (min-width: 481px) and (max-width: 1024px) {
+    .feedback-overlay {
+        align-items: center;
+        padding: 20px;
+    }
+
+    .feedback-modal {
+        max-width: 440px;
+        border-radius: 28px;
+        padding: 28px 28px 36px;
+        animation: feedbackSlideUpTablet 0.3s ease;
+    }
+
+    @keyframes feedbackSlideUpTablet {
+        from { transform: scale(0.95) translateY(10px); opacity: 0; }
+        to { transform: scale(1) translateY(0); opacity: 1; }
+    }
+
+    .feedback-header h3 {
+        font-size: 20px;
+    }
+
+    #feedbackName,
+    #feedbackDesc {
+        font-size: 15px;
+        padding: 14px 16px;
+    }
+
+    body.dark #feedbackName,
+body.dark #feedbackDesc {
+    background: #1c1c1e !important;
+    color: #f5f5f7 !important;
+    border-color: #3a3a3c !important;
+}
+
+    .feedback-actions button {
+        padding: 14px;
+        font-size: 16px;
+    }
+}
+
+/* ============================================
+   DESKTOP (macOS Style)
+   ============================================ */
+@media (min-width: 1025px) {
+    .feedback-overlay {
+        align-items: center;
+        padding: 30px;
+    }
+
+    .feedback-modal {
+        max-width: 480px;
+        border-radius: 28px;
+        padding: 32px 32px 40px;
+        animation: feedbackSlideUpDesktop 0.25s ease;
+    }
+
+    @keyframes feedbackSlideUpDesktop {
+        from { transform: scale(0.96) translateY(8px); opacity: 0; }
+        to { transform: scale(1) translateY(0); opacity: 1; }
+    }
+
+    .feedback-header h3 {
+        font-size: 21px;
+    }
+
+    #feedbackName,
+    #feedbackDesc {
+        font-size: 15px;
+        padding: 14px 18px;
+        border-radius: 14px;
+    }
+
+    .feedback-actions button {
+        padding: 16px;
+        font-size: 16px;
+        border-radius: 14px;
+    }
+}
+
+.feedback-attach-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 4px;
+}
+
+.feedback-attach-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size: 14px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: none !important;
+}
+
+.feedback-attach-btn:active {
+    transform: scale(0.97);
+}
+
+.feedback-attach-btn i {
+    font-size: 18px;
+    color: var(--accent);
+}
+
+#feedbackImage {
+    display: none;
+}
+
+.feedback-file-name {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* ---------- ATTACH IMAGE (with remove button) ---------- */
+.feedback-attach-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.feedback-attach-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size: 14px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: none !important;
+}
+
+.feedback-attach-btn:active {
+    transform: scale(0.97);
+}
+
+.feedback-attach-btn i {
+    font-size: 18px;
+    color: var(--accent);
+}
+
+#feedbackImage {
+    display: none;
+}
+
+.feedback-file-name {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.feedback-remove-file {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: transparent !important;
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: none !important;
+}
+
+.feedback-remove-file:active {
+    transform: scale(0.95);
+}
+
+.feedback-remove-file:hover {
+    background: transparent !important;
+    color: var(--text-secondary) !important;
+    transform: none !important;
+}
+
+/* Autofill fix — Light + Dark */
+#feedbackName:-webkit-autofill,
+#feedbackDesc:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px var(--bg-input) inset !important;
+    -webkit-text-fill-color: var(--text-primary) !important;
+    caret-color: var(--text-primary) !important;
+    transition: background-color 5000s ease-in-out 0s !important;
+}
+
+/* ---------- Dark mode X button fix — no grey hover ---------- */
+body.dark .feedback-header button,
+body.dark .feedback-remove-file {
+    color: #ffffff !important;
+    background: transparent !important;
+}
+
+body.dark .feedback-header button:hover,
+body.dark .feedback-remove-file:hover {
+    color: #ffffff !important;
+    background: transparent !important;
+    transform: none !important;
+    opacity: 1 !important;
+}
+
+/* ---------- Mobile Keyboard Fix ---------- */
+@media (max-width: 480px) {
+    .feedback-modal {
+        max-height: 70vh;
+        overflow-y: auto;
+        padding-bottom: 20px;
+    }
+
+    .feedback-actions {
+        padding-bottom: 10px;
+    }
+}

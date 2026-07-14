@@ -712,67 +712,150 @@ document.addEventListener("click", function() {
     dropdownMenu.style.display = "none";
 });
 
-logoutBtn.addEventListener("click", async function() {
-    if (!confirm("Log out? You'll need to log in again to see your notes and history.")) return;
+logoutBtn.addEventListener("click", function() {
+    dropdownMenu.style.display = "none";
+    document.getElementById("logoutConfirmModal").style.display = "flex";
+});
+
+document.getElementById("logoutCancelBtn").addEventListener("click", function() {
+    document.getElementById("logoutConfirmModal").style.display = "none";
+});
+
+document.getElementById("logoutConfirmBtn").addEventListener("click", async function() {
     await fetch("/logout", { method: "POST" });
     window.location.href = "/";
 });
 
+const editNameOverlay = document.getElementById("editNameOverlay");
+const editNameInput = document.getElementById("editNameInput");
+
+document.getElementById("editNameOpt").addEventListener("click", function () {
+    editNameInput.value = profileName.textContent;
+    editNameOverlay.style.display = "flex";
+    editNameInput.focus();
+    dropdownMenu.style.display = "none";
+});
+
+document.getElementById("editNameCancelBtn").addEventListener("click", function () {
+    editNameOverlay.style.display = "none";
+});
+
+document.getElementById("editNameSaveBtn").addEventListener("click", saveEditedName);
+
+editNameInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+        saveEditedName();
+    }
+});
+
+function saveEditedName() {
+
+    const newName = editNameInput.value.trim();
+
+    if (!newName) {
+        showToast("Please enter your name.", "error");
+        return;
+    }
+
+    const firstName = newName.split(" ")[0];
+
+    const saveBtn = document.getElementById("editNameSaveBtn");
+
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Saving...";
+
+    fetch("/update-name", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: "name=" + encodeURIComponent(firstName)
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Save";
+
+        if (data.success) {
+
+            profileName.textContent = data.name || firstName;
+
+            editNameOverlay.style.display = "none";
+
+            console.log("Toast reached");
+
+            showToast("Name updated successfully.");
+
+        } else {
+
+            showToast(data.message || "Couldn't update your name.", "error");
+
+        }
+
+    })
+    .catch(() => {
+
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Save";
+
+        showToast("Something went wrong.", "error");
+
+    });
+
+}
+
 fetch("/notes?dummy=1").then(() => {});
 profileName.textContent = window.CURRENT_USER_NAME || "User";
 
-nameContinueBtn.addEventListener("click", function() {
-    const name = nameInput.value.trim().split(" ")[0];
+function showToast(message,type="success"){
 
-    if (!name) {
-        nameInput.focus();
-        return;
+    const toast=document.getElementById("toast");
+
+    document.getElementById("toastTitle").textContent=
+        type==="error" ? "Error" : "Success";
+
+    document.getElementById("toastMessage").textContent=message;
+
+    toast.classList.remove("error");
+
+    if(type==="error"){
+        toast.classList.add("error");
     }
 
-    saveNameLocally(name);
-    profileName.textContent = name;
-    nameOverlay.style.display = "none";
-});
+    toast.classList.add("show");
 
-nameInput.addEventListener("keypress", function(e) {
-    if (e.key === "Enter") {
-        nameContinueBtn.click();
-    }
-});
+    clearTimeout(window.toastTimer);
 
-profilePill.addEventListener("click", function() {
-    editNameInput.value = getSavedName() || "";
-    editNameOverlay.style.display = "flex";
-    editNameInput.focus();
-});
+    window.toastTimer=setTimeout(()=>{
+        toast.classList.remove("show");
+    },2200);
 
-editNameCancelBtn.addEventListener("click", function() {
-    editNameOverlay.style.display = "none";
-});
+}
 
-editNameSaveBtn.addEventListener("click", function() {
-    const name = editNameInput.value.trim().split(" ")[0];
+// About Modal
+const aboutOverlay = document.getElementById("aboutOverlay");
+const aboutCloseBtn = document.getElementById("aboutCloseBtn");
+const aboutOpt = document.getElementById("aboutOpt");
 
-    if (!name) {
-        editNameInput.focus();
-        return;
-    }
+if (aboutOpt) {
+    aboutOpt.addEventListener("click", function(e) {
+        e.stopPropagation();
+        dropdownMenu.style.display = "none";
+        aboutOverlay.style.display = "flex";
+    });
+}
 
-    saveNameLocally(name);
-    profileName.textContent = name;
-    editNameOverlay.style.display = "none";
-});
+if (aboutCloseBtn) {
+    aboutCloseBtn.addEventListener("click", function() {
+        aboutOverlay.style.display = "none";
+    });
+}
 
-editNameInput.addEventListener("keypress", function(e) {
-    if (e.key === "Enter") {
-        editNameSaveBtn.click();
-    }
-});
-
-editNameOverlay.addEventListener("click", function(e) {
-    if (e.target === editNameOverlay) {
-        editNameOverlay.style.display = "none";
-    }
-});
-
-initUser();
+if (aboutOverlay) {
+    aboutOverlay.addEventListener("click", function(e) {
+        if (e.target === aboutOverlay) {
+            aboutOverlay.style.display = "none";
+        }
+    });
+}

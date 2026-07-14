@@ -4,38 +4,71 @@
     <title>JARVIS</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont/tabler-icons.min.css">
 </head>
 <body>
 
-<div class="auth-wrapper">
+<div class="auth-page-wrap">
 
     <div id="signupCard" class="auth-card">
-        <p class="auth-title">Create your account</p>
-        <p class="auth-subtitle">Join JARVIS to get started</p>
+        <button class="auth-theme-toggle" id="themeToggle">
+            <span class="auth-theme-knob" id="themeKnob"><i class="ti ti-sun" id="themeIcon"></i></span>
+        </button>
 
-        <label class="auth-label">NAME</label>
-        <input type="text" id="signupName" placeholder="Your name">
-        <p class="auth-error" id="signupNameError"></p>
+        <div id="signupStep1">
+            <p class="auth-title">Create your account</p>
+            <p class="auth-subtitle">Let's verify your email first</p>
 
-        <label class="auth-label">EMAIL</label>
-        <input type="email" id="signupEmail" placeholder="you@example.com">
-        <p class="auth-error" id="signupEmailError"></p>
+            <label class="auth-label">EMAIL</label>
+            <input type="email" id="signupEmail" placeholder="john@doe.com">
+            <p class="auth-error" id="signupEmailError"></p>
 
-        <label class="auth-label">PASSWORD</label>
-        <div class="auth-password-wrap">
-            <input type="password" id="signupPassword" placeholder="At least 8 characters">
-            <button type="button" class="auth-eye-btn" data-target="signupPassword"><i class="ti ti-eye"></i></button>
+            <button class="auth-submit-btn" id="signupSendCodeBtn">Continue</button>
         </div>
-        <div class="auth-strength-bars">
-            <div class="auth-bar" id="signupBar1"></div>
-            <div class="auth-bar" id="signupBar2"></div>
-            <div class="auth-bar" id="signupBar3"></div>
-        </div>
-        <p class="auth-strength-text" id="signupStrengthText">Use 8+ characters with uppercase, lowercase, a number, and a symbol</p>
-        <p class="auth-error" id="signupPasswordError"></p>
 
-        <button class="auth-submit-btn" id="signupSubmitBtn">Sign Up</button>
+        <div id="signupStep2" style="display:none; text-align:center;">
+            <i class="ti ti-shield-lock auth-icon"></i>
+            <p class="auth-title" style="margin-top:8px;">Enter the code</p>
+            <p class="auth-subtitle" id="signupSentTo"></p>
+
+            <div class="auth-otp-row" id="signupOtpRow">
+                <input maxlength="1" class="auth-otp-box">
+                <input maxlength="1" class="auth-otp-box">
+                <input maxlength="1" class="auth-otp-box">
+                <input maxlength="1" class="auth-otp-box">
+                <input maxlength="1" class="auth-otp-box">
+                <input maxlength="1" class="auth-otp-box">
+            </div>
+            <p class="auth-error" id="signupOtpError"></p>
+
+            <button class="auth-submit-btn" id="signupVerifyBtn">Verify</button>
+            <p class="auth-switch" id="signupResendText">Resend code in <span id="signupTimer" style="color:var(--accent); font-weight:600;">30s</span></p>
+            <p class="auth-switch" id="signupResendLink" style="display:none;">Resend code</p>
+        </div>
+
+        <div id="signupStep3" style="display:none;">
+            <div class="auth-verified-badge"><i class="ti ti-circle-check"></i> Email verified</div>
+
+            <label class="auth-label">NAME</label>
+            <input type="text" id="signupName" placeholder="John Doe">
+            <p class="auth-error" id="signupNameError"></p>
+
+            <label class="auth-label">PASSWORD</label>
+            <div class="auth-password-wrap">
+                <input type="password" id="signupPassword" placeholder="At least 8 characters">
+                <button type="button" class="auth-eye-btn" data-target="signupPassword"><i class="ti ti-eye"></i></button>
+            </div>
+            <div class="auth-strength-bars">
+                <div class="auth-bar" id="signupBar1"></div>
+                <div class="auth-bar" id="signupBar2"></div>
+                <div class="auth-bar" id="signupBar3"></div>
+            </div>
+            <p class="auth-strength-text">Use 8+ characters with uppercase, lowercase, a number, and a symbol</p>
+            <p class="auth-error" id="signupPasswordError"></p>
+
+            <button class="auth-submit-btn" id="signupCreateBtn">Create account</button>
+        </div>
 
         <p class="auth-switch">Already have an account? <span id="goToLogin">Log in</span></p>
     </div>
@@ -45,7 +78,7 @@
         <p class="auth-subtitle">Welcome back</p>
 
         <label class="auth-label">EMAIL</label>
-        <input type="email" id="loginEmail" placeholder="you@example.com">
+        <input type="email" id="loginEmail" placeholder="john@doe.com">
         <p class="auth-error" id="loginEmailError"></p>
 
         <label class="auth-label">PASSWORD</label>
@@ -55,74 +88,96 @@
         </div>
         <p class="auth-error" id="loginPasswordError"></p>
 
-        <p class="auth-forgot-link" id="goToForgot">Forgot password?</p>
+        <p class="auth-switch" id="goToForgot" style="text-align:right; margin:-6px 0 16px;">Forgot password?</p>
 
-        <button class="auth-submit-btn" id="loginSubmitBtn">Log In</button>
+        <button class="auth-submit-btn" id="loginSubmitBtn">Log in</button>
 
         <p class="auth-switch">Don't have an account? <span id="goToSignup">Sign up</span></p>
     </div>
 
-    <div id="forgotEmailCard" class="auth-card" style="display:none; text-align:center;">
-        <i class="ti ti-mail auth-icon"></i>
-        <p class="auth-title">Reset your password</p>
-        <p class="auth-subtitle">We'll send a code to your registered email</p>
-
-        <input type="email" id="forgotEmail" placeholder="you@example.com" style="text-align:center;">
-        <p class="auth-error" id="forgotEmailError"></p>
-
-        <button class="auth-submit-btn" id="sendCodeBtn">Send Code</button>
-        <p class="auth-switch" id="backToLoginFromEmail">Back to login</p>
-    </div>
-
-    <div id="forgotOtpCard" class="auth-card" style="display:none; text-align:center;">
-        <i class="ti ti-shield-lock auth-icon"></i>
-        <p class="auth-title">Enter the code</p>
-        <p class="auth-subtitle" id="otpSentTo">Sent to your email</p>
-
-        <div class="auth-otp-row">
-            <input maxlength="1" class="auth-otp-box">
-            <input maxlength="1" class="auth-otp-box">
-            <input maxlength="1" class="auth-otp-box">
-            <input maxlength="1" class="auth-otp-box">
-            <input maxlength="1" class="auth-otp-box">
-            <input maxlength="1" class="auth-otp-box">
-        </div>
-        <p class="auth-error" id="otpError"></p>
-
-        <button class="auth-submit-btn" id="verifyOtpBtn">Verify</button>
-
-        <p class="auth-switch" id="resendText">Resend code in <span id="resendTimer">30</span>s</p>
-        <p class="auth-switch" id="resendLink" style="display:none;">Resend code</p>
-    </div>
-
-    <div id="newPasswordCard" class="auth-card" style="display:none; text-align:center;">
-        <i class="ti ti-lock-check auth-icon" style="color:var(--success);"></i>
-        <p class="auth-title">Set new password</p>
-        <p class="auth-subtitle">Code verified. Choose a new password.</p>
-
-        <div class="auth-password-wrap">
-            <input type="password" id="newPassword" placeholder="New password">
-            <button type="button" class="auth-eye-btn" data-target="newPassword"><i class="ti ti-eye"></i></button>
-        </div>
-        <div class="auth-strength-bars">
-            <div class="auth-bar" id="newBar1"></div>
-            <div class="auth-bar" id="newBar2"></div>
-            <div class="auth-bar" id="newBar3"></div>
-        </div>
-
-        <input type="password" id="confirmPassword" placeholder="Confirm password" style="margin-top:12px;">
-        <p class="auth-error" id="newPasswordError"></p>
-
-        <button class="auth-submit-btn" id="updatePasswordBtn">Update Password</button>
-    </div>
-
 </div>
 
-<div id="authToast" class="feedback-toast">
-    <i id="authToastIcon" class="ti"></i>
-    <span id="authToastText"></span>
+<div id="forgotEmailCard" class="auth-card" style="display:none; text-align:center;">
+    <i class="ti ti-mail auth-icon"></i>
+    <p class="auth-title" style="margin-top:8px;">Reset your password</p>
+    <p class="auth-subtitle">We'll send a code to your registered email</p>
+
+    <input type="email" id="forgotEmail" placeholder="john@doe.com" style="text-align:center;">
+    <p class="auth-error" id="forgotEmailError"></p>
+
+    <button class="auth-submit-btn" id="sendCodeBtn">Send code</button>
+    <p class="auth-switch" id="backToLoginFromEmail">Back to login</p>
 </div>
+
+<div id="forgotOtpCard" class="auth-card" style="display:none; text-align:center;">
+    <i class="ti ti-shield-lock auth-icon"></i>
+    <p class="auth-title" style="margin-top:8px;">Enter the code</p>
+    <p class="auth-subtitle" id="otpSentTo"></p>
+
+    <div class="auth-otp-row" id="forgotOtpRow">
+        <input maxlength="1" class="auth-otp-box">
+        <input maxlength="1" class="auth-otp-box">
+        <input maxlength="1" class="auth-otp-box">
+        <input maxlength="1" class="auth-otp-box">
+        <input maxlength="1" class="auth-otp-box">
+        <input maxlength="1" class="auth-otp-box">
+    </div>
+    <p class="auth-error" id="forgotOtpError"></p>
+
+    <button class="auth-submit-btn" id="verifyOtpBtn">Verify</button>
+    <p class="auth-switch" id="resendText">Resend code in <span id="resendTimer" style="color:var(--accent); font-weight:600;">30s</span></p>
+    <p class="auth-switch" id="resendLink" style="display:none;">Resend code</p>
+</div>
+
+<div id="newPasswordCard" class="auth-card" style="display:none;">
+    <i class="ti ti-lock-check auth-icon" style="color:var(--success);"></i>
+    <p class="auth-title" style="margin-top:8px; text-align:center;">Set new password</p>
+    <p class="auth-subtitle" style="text-align:center;">Code verified. Choose a new password.</p>
+
+    <label class="auth-label">NEW PASSWORD</label>
+    <div class="auth-password-wrap">
+        <input type="password" id="newPassword" placeholder="At least 8 characters">
+        <button type="button" class="auth-eye-btn" data-target="newPassword"><i class="ti ti-eye"></i></button>
+    </div>
+    <div class="auth-strength-bars">
+        <div class="auth-bar" id="newBar1"></div>
+        <div class="auth-bar" id="newBar2"></div>
+        <div class="auth-bar" id="newBar3"></div>
+    </div>
+
+    <label class="auth-label" style="margin-top:6px;">CONFIRM PASSWORD</label>
+    <input type="password" id="confirmPassword" placeholder="Re-enter password">
+    <p class="auth-error" id="newPasswordError"></p>
+
+    <button class="auth-submit-btn" id="updatePasswordBtn">Update password</button>
+</div>
+
+<div class="auth-logout-modal" id="logoutConfirmModal">
+    <div class="auth-logout-box">
+        <i class="ti ti-logout auth-icon" style="color:var(--danger);"></i>
+        <p class="auth-title" style="margin-top:8px;">Log out?</p>
+        <p class="auth-subtitle">You'll need to log in again to see your notes and history.</p>
+        <div class="auth-logout-actions">
+            <button class="auth-logout-cancel" id="logoutCancelBtn">Cancel</button>
+            <button class="auth-logout-confirm" id="logoutConfirmBtn">Log out</button>
+        </div>
+    </div>
+</div>
+
+<p style="position:fixed; bottom:16px; left:0; right:0; text-align:center; font-size:11px; color:var(--text-muted);">JARVIS Beta v2.0 &copy; 2026 Aditya</p>
 
 <script src="{{ url_for('static', filename='auth.js') }}"></script>
+
+<footer style="
+    text-align: center;
+    padding: 20px 0 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border-subtle);
+    margin-top: 30px;
+">
+    JARVIS v2.0 · © 2026 Aditya · All rights reserved.
+</footer>
+
 </body>
 </html>

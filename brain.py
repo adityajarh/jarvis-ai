@@ -1,8 +1,8 @@
 import datetime
 import os
 import re
+import random
 import webbrowser
-import json
 import base64
 import smtplib
 
@@ -13,6 +13,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from urllib.parse import quote_plus
 from dotenv import load_dotenv
 from groq import Groq
+from models import db, User, Note, ResetCode
 
 load_dotenv()
 
@@ -20,68 +21,26 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 pending_shutdown = False
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-NOTES_FILE = os.path.join(BASE_DIR, "notes.json")
-
-
-def load_notes():
-    try:
-        with open(NOTES_FILE, "r", encoding="utf-8") as file:
-            return json.load(file)
-    except:
-        return []
-
-
-def save_notes(notes):
-    with open(NOTES_FILE, "w", encoding="utf-8") as file:
-        json.dump(notes, file, indent=4)
-
-USERS_FILE = os.path.join(BASE_DIR, "users.json")
-
-
-def load_users():
-    try:
-        with open(USERS_FILE, "r", encoding="utf-8") as file:
-            return json.load(file)
-    except:
-        return []
-
-
-def save_users(users):
-    with open(USERS_FILE, "w", encoding="utf-8") as file:
-        json.dump(users, file, indent=4)
-
 
 def find_user_by_email(email):
-    users = load_users()
     email = email.strip().lower()
-
-    for user in users:
-        if user["email"] == email:
-            return user
-
-    return None
+    return User.query.filter_by(email=email).first()
 
 
 def create_user(name, email, password):
-    users = load_users()
     email = email.strip().lower()
 
     if find_user_by_email(email):
         return None, "This email is already registered."
 
-    new_id = max((u["id"] for u in users), default=0) + 1
+    user = User(
+        name=name.strip().split(" ")[0],
+        email=email,
+        password_hash=generate_password_hash(password)
+    )
 
-    user = {
-        "id": new_id,
-        "name": name.strip().split(" ")[0],
-        "email": email,
-        "password_hash": generate_password_hash(password),
-        "created_at": datetime.datetime.now().strftime("%d %b %Y %H:%M")
-    }
-
-    users.append(user)
-    save_users(users)
+    db.session.add(user)
+    db.session.commit()
 
     return user, None
 
@@ -92,104 +51,127 @@ def verify_login(email, password):
     if not user:
         return None
 
-    if not check_password_hash(user["password_hash"], password):
+    if not check_password_hash(user.password_hash, password):
         return None
 
     return user
 
 
 def update_user_password(email, new_password):
-    users = load_users()
-    email = email.strip().lower()
+    user = find_user_by_email(email)
 
-    for user in users:
-        if user["email"] == email:
-            user["password_hash"] = generate_password_hash(new_password)
-            save_users(users)
-            return True
+    if not user:
+        return False
 
-    return False
+    user.password_hash = generate_password_hash(new_password)
+    db.session.commit()
 
-RESET_CODES_FILE = os.path.join(BASE_DIR, "reset_codes.json")
+    return True
 
 
-def load_reset_codes():
-    try:
-        with open(RESET_CODES_FILE, "r", encoding="utf-8") as file:
-            return json.load(file)
-    except:
-        return []
+def add_note(text, user_id=None):
+    note = Note(
+        user_id=user_id,
+        text=text
+    )
+
+    db.session.add(note)
+    db.session.commit()
+
+    return "Note saved successfully."
 
 
-def save_reset_codes(codes):
-    with open(RESET_CODES_FILE, "w", encoding="utf-8") as file:
-        json.dump(codes, file, indent=4)
+def get_notes(user_id=None):
+    notes = Note.query.filter_by(user_id=user_id).order_by(Note.created_at.desc()).all()
+
+    return [
+        {
+            "id": n.id,
+            "text": n.text,
+            "archived": n.archived,
+            "created_at": n.created_at.strftime("%d %b %Y %H:%M")
+        }
+        for n in notes
+    ]
+
+
+def delete_note(note_id):
+    note = Note.query.get(note_id)
+
+    if note:
+        db.session.delete(note)
+        db.session.commit()
+        return "Note deleted successfully."
+
+    return "Note not found."
+
+
+def clear_notes():
+    Note.query.delete()
+    db.session.commit()
+    return "All notes cleared."
 
 
 def generate_reset_code(email):
-    import random
-
     email = email.strip().lower()
-    codes = load_reset_codes()
 
-    codes = [c for c in codes if c["email"] != email]
+    ResetCode.query.filter_by(email=email).delete()
 
     code = str(random.randint(100000, 999999))
-    expires_at = (datetime.datetime.now() + datetime.timedelta(minutes=10)).isoformat()
+    expires_at = datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
 
-    codes.append({
-        "email": email,
-        "code": code,
-        "expires_at": expires_at,
-        "attempts": 0,
-        "verified": False
-    })
+    reset_entry = ResetCode(
+        email=email,
+        code=code,
+        expires_at=expires_at,
+        attempts=0,
+        verified=False
+    )
 
-    save_reset_codes(codes)
+    db.session.add(reset_entry)
+    db.session.commit()
+
     return code
 
 
 def verify_reset_code(email, entered_code):
     email = email.strip().lower()
-    codes = load_reset_codes()
+    entry = ResetCode.query.filter_by(email=email).first()
 
-    for entry in codes:
-        if entry["email"] == email:
+    if not entry:
+        return "not_found"
 
-            if entry["attempts"] >= 5:
-                return "blocked"
+    if entry.attempts >= 5:
+        return "blocked"
 
-            if datetime.datetime.now() > datetime.datetime.fromisoformat(entry["expires_at"]):
-                return "expired"
+    if datetime.datetime.utcnow() > entry.expires_at:
+        return "expired"
 
-            if entry["code"] == entered_code:
-                entry["verified"] = True
-                save_reset_codes(codes)
-                return "correct"
+    if entry.code == entered_code:
+        entry.verified = True
+        db.session.commit()
+        return "correct"
 
-            entry["attempts"] += 1
-            save_reset_codes(codes)
-            return "incorrect"
-
-    return "not_found"
+    entry.attempts += 1
+    db.session.commit()
+    return "incorrect"
 
 
 def is_reset_verified(email):
     email = email.strip().lower()
-    codes = load_reset_codes()
+    entry = ResetCode.query.filter_by(email=email).first()
 
-    for entry in codes:
-        if entry["email"] == email:
-            return entry.get("verified", False)
+    if not entry:
+        return False
 
-    return False
+    return entry.verified
 
 
 def clear_reset_code(email):
     email = email.strip().lower()
-    codes = load_reset_codes()
-    codes = [c for c in codes if c["email"] != email]
-    save_reset_codes(codes)
+    ResetCode.query.filter_by(email=email).delete()
+    db.session.commit()
+
 
 def send_feedback_email(name, description, image_data=None, image_filename=None):
     try:
@@ -223,26 +205,43 @@ def send_feedback_email(name, description, image_data=None, image_filename=None)
     except Exception as e:
         print("EMAIL ERROR:", e)
         return False
-    
-def send_otp_email(name, email, code):
+
+
+def send_otp_email(name, email, code, purpose="reset"):
     try:
         sender_email = os.getenv("EMAIL_USER")
         sender_password = os.getenv("EMAIL_APP_PASSWORD")
 
+        if purpose == "signup":
+            subject = "Your JARVIS Verification Code"
+            intro = "Welcome to JARVIS.\n\nYour verification code is:"
+            footer = "If you didn't request this verification, you can safely ignore this email."
+        else:
+            subject = "Your JARVIS Password Reset Code"
+            intro = "Your password reset code is:"
+            footer = "If you didn't request a password reset, you can safely ignore this email."
+
         msg = MIMEMultipart()
         msg["From"] = sender_email
         msg["To"] = email
-        msg["Subject"] = "Your JARVIS password reset code"
+        msg["Subject"] = subject
 
-        body = f"""Hi {name},
+        greeting = f"Hi {name}," if name else "Hi,"
 
-Your password reset code is:
+        body = f"""{greeting}
+
+{intro}
 
     {code}
 
-This code will expire in 10 minutes. If you didn't request this, you can safely ignore this email.
+This code will expire in 10 minutes.
 
-— JARVIS"""
+For your security, never share this code with anyone.
+
+{footer}
+
+— JARVIS
+"""
 
         msg.attach(MIMEText(body, "plain"))
 
@@ -257,49 +256,6 @@ This code will expire in 10 minutes. If you didn't request this, you can safely 
     except Exception as e:
         print("OTP EMAIL ERROR:", e)
         return False
-
-
-def add_note(text, user_id=None):
-    notes = load_notes()
-
-    new_id = max((n["id"] for n in notes), default=0) + 1
-
-    note = {
-        "id": new_id,
-        "text": text,
-        "archived": False,
-        "created_at": datetime.datetime.now().strftime("%d %b %Y %H:%M"),
-        "user_id": user_id
-    }
-
-    notes.append(note)
-    save_notes(notes)
-
-    return "Note saved successfully."
-
-
-def get_notes(user_id=None):
-    notes = load_notes()
-    return [n for n in notes if n.get("user_id") == user_id]
-
-
-def clear_notes():
-    save_notes([])
-    return "All notes cleared."
-
-def delete_note(note_id):
-
-    notes = load_notes()
-
-    notes = [
-        note
-        for note in notes
-        if note["id"] != note_id
-    ]
-
-    save_notes(notes)
-
-    return "Note deleted successfully."
 
 def has_word(text, word):
     return re.search(rf"\b{re.escape(word)}\b", text) is not None

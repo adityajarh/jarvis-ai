@@ -4,12 +4,19 @@
     <title>JARVIS</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont/tabler-icons.min.css">
 </head>
 
 <script>window.CURRENT_USER_NAME = "{{ session.get('user_name', 'User') }}";</script>
 
+
 <body>
+
+<div id="toast" class="toast">
+    <div class="toast-title" id="toastTitle">Success</div>
+    <div class="toast-message" id="toastMessage"></div>
+</div>
 
 <div class="container">
 
@@ -17,12 +24,32 @@
     <button id="profilePill" class="profile-pill">
     <i class="ti ti-user-circle"></i>
     <span id="profileName">User</span>
-</button>
-<div id="dropdownMenu" style="display:none; position:absolute; top:44px; left:0; background:var(--bg-card); border-radius:14px; box-shadow:var(--shadow-modal); width:160px; padding:6px; z-index:20;">
-    <button id="logoutOpt" style="width:100%; text-align:left; background:none; border:none; padding:10px 12px; border-radius:10px; font-size:13px; color:var(--danger); cursor:pointer; display:flex; align-items:center; gap:8px;">
-        <i class="ti ti-logout"></i> Log out
     </button>
+<div id="dropdownMenu" style="display:none; position:absolute; top:44px; left:0; background:var(--bg-card); border-radius:14px; box-shadow:var(--shadow-modal); width:170px; padding:6px; z-index:20;">
+    <button id="editNameOpt" style="width:100%; text-align:left; background:none; border:none; padding:10px 12px; border-radius:10px; font-size:13px; color:var(--text-primary); cursor:pointer; display:flex; align-items:center; gap:8px;">
+    <i class="ti ti-edit"></i> Edit name
+</button>
+<div style="height:1px; background:var(--border-subtle); margin:4px 6px;"></div>
+<button id="aboutOpt" style="width:100%; text-align:left; background:none; border:none; padding:10px 12px; border-radius:10px; font-size:13px; color:var(--text-primary); cursor:pointer; display:flex; align-items:center; gap:8px;">
+    <i class="ti ti-info-circle"></i> About
+</button>
+<div style="height:1px; background:var(--border-subtle); margin:4px 6px;"></div>
+<button id="logoutOpt" style="width:100%; text-align:left; background:none; border:none; padding:10px 12px; border-radius:10px; font-size:13px; color:var(--danger); cursor:pointer; display:flex; align-items:center; gap:8px;">
+    <i class="ti ti-logout"></i> Log out
+</button>
 </div>
+</div>
+
+<div class="auth-logout-modal" id="logoutConfirmModal">
+    <div class="auth-logout-box">
+        <i class="ti ti-logout auth-icon" style="color:var(--danger);"></i>
+        <p class="auth-title" style="margin-top:8px;">Log out?</p>
+        <p class="auth-subtitle">You'll need to log in again to see your notes and history.</p>
+        <div class="auth-logout-actions">
+            <button class="auth-logout-cancel" id="logoutCancelBtn">Cancel</button>
+            <button class="auth-logout-confirm" id="logoutConfirmBtn">Log out</button>
+        </div>
+    </div>
 </div>
 
     <h1>JARVIS</h1>
@@ -190,7 +217,68 @@
     </div>
 </div>
 
+<!-- About Modal -->
+<div id="aboutOverlay" class="about-overlay">
+    <div class="about-modal">
+        <div class="about-header">
+            <h3><i class="ti ti-info-circle"></i> About JARVIS</h3>
+            <button id="aboutCloseBtn"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="about-body">
+            <div class="about-version">
+                <span class="about-badge">v2.0</span>
+                <span class="about-date">July 2026</span>
+                <ul>
+                    <li>Authentication with OTP verification</li>
+                    <li>More secure login system</li>
+                    <li>Edit name with toast notification</li>
+                    <li>Profile dropdown menu</li>
+                    <li>About section with version history</li>
+                    <li>Footer with copyright</li>
+                    <li>UI improvements</li>
+                </ul>
+            </div>
+            <div class="about-divider"></div>
+            <div class="about-version">
+                <span class="about-badge about-legacy">v1.0</span>
+                <span class="about-date">June 2026</span>
+                <ul>
+                    <li>Basic authentication (Signup/Login)</li>
+                    <li>Notes system (Add/View/Delete)</li>
+                    <li>AI chat with Groq Llama 3.3</li>
+                    <li>Voice input (Speech Recognition)</li>
+                    <li>Dark/Light mode</li>
+                    <li>Email feedback system</li>
+                </ul>
+            </div>
+            <div class="about-divider"></div>
+            <div class="about-creator">
+                <p>Created by Aditya</p>
+                <div class="about-links">
+                    <a href="https://github.com/adityajarh/jarvis-ai.git" target="_blank" rel="noopener noreferrer"><i class="ti ti-brand-github"></i> GitHub</a>
+                    <a href="https://www.instagram.com/adityajarh/" target="_blank" rel="noopener noreferrer"><i class="ti ti-brand-instagram"></i> Instagram</a>
+                    <a href="mailto:jarhisdevil@gmail.com"><i class="ti ti-mail"></i> Email</a>
+                </div>
+            </div>
+            <div class="about-powered">
+                <p>Powered by Flask · Groq AI · PostgreSQL</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+<footer style="
+    text-align: center;
+    padding: 20px 0 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border-subtle);
+    margin-top: 30px;
+">
+    JARVIS v2.0 · © 2026 Aditya · All rights reserved.
+</footer>
 
 </body>
 </html>

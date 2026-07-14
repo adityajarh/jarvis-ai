@@ -3,14 +3,19 @@ function showCard(id) {
     document.getElementById(id).style.display = 'block';
 }
 
-function showToast(success, message) {
-    const toast = document.getElementById('authToast');
-    const icon = document.getElementById('authToastIcon');
-    const text = document.getElementById('authToastText');
-    icon.className = success ? 'ti ti-circle-check' : 'ti ti-alert-circle';
-    text.textContent = message;
-    toast.className = 'feedback-toast ' + (success ? 'success' : 'error');
-    setTimeout(() => { toast.className = 'feedback-toast'; }, 3000);
+function setLoading(btn, loadingText, normalText) {
+    btn.disabled = true;
+    btn.textContent = loadingText;
+    btn.dataset.normalText = normalText;
+}
+
+function clearLoading(btn) {
+    btn.disabled = false;
+    btn.textContent = btn.dataset.normalText;
+}
+
+function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 function checkPasswordStrength(password, bar1, bar2, bar3) {
@@ -27,6 +32,7 @@ function checkPasswordStrength(password, bar1, bar2, bar3) {
 }
 
 document.querySelectorAll('.auth-eye-btn').forEach(btn => {
+    btn.addEventListener('mousedown', function(e) { e.preventDefault(); });
     btn.addEventListener('click', function() {
         const input = document.getElementById(this.dataset.target);
         const icon = this.querySelector('i');
@@ -37,39 +43,186 @@ document.querySelectorAll('.auth-eye-btn').forEach(btn => {
             input.type = 'password';
             icon.className = 'ti ti-eye';
         }
+        input.focus();
     });
+});
+
+let isDark = false;
+document.getElementById('themeToggle').addEventListener('click', function() {
+    isDark = !isDark;
+    document.body.classList.toggle('dark', isDark);
+    document.getElementById('themeIcon').className = isDark ? 'ti ti-moon' : 'ti ti-sun';
+    document.getElementById('themeKnob').style.transform = isDark ? 'translateX(18px)' : 'translateX(0)';
 });
 
 document.getElementById('goToLogin').addEventListener('click', () => showCard('loginCard'));
 document.getElementById('goToSignup').addEventListener('click', () => showCard('signupCard'));
 
+let signupEmailValue = '';
 let signupScore = 0;
+
 document.getElementById('signupPassword').addEventListener('input', function() {
     signupScore = checkPasswordStrength(this.value, document.getElementById('signupBar1'), document.getElementById('signupBar2'), document.getElementById('signupBar3'));
 });
 
-document.getElementById('signupSubmitBtn').addEventListener('click', async function() {
-    const name = document.getElementById('signupName').value.trim();
+document.getElementById('signupEmail').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('signupSendCodeBtn').click();
+});
+
+document.getElementById('signupSendCodeBtn').addEventListener('click', async function() {
     const email = document.getElementById('signupEmail').value.trim();
+    const errorEl = document.getElementById('signupEmailError');
+    errorEl.textContent = '';
+
+    if (!isValidEmail(email)) {
+        errorEl.textContent = 'Enter a valid email address.';
+        return;
+    }
+
+    setLoading(this, 'Sending...', 'Continue');
+
+    const formData = new FormData();
+    formData.append('email', email);
+
+    try {
+        const res = await fetch('/signup/send-code', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (data.success) {
+            signupEmailValue = email;
+            document.getElementById('signupSentTo').textContent = 'Sent to ' + email;
+            document.getElementById('signupStep1').style.display = 'none';
+            document.getElementById('signupStep2').style.display = 'block';
+            startSignupTimer();
+            document.querySelector('#signupOtpRow .auth-otp-box').focus();
+        } else {
+            errorEl.textContent = data.message;
+        }
+    } catch {
+        errorEl.textContent = 'Connection failed. Try again.';
+    } finally {
+        clearLoading(this);
+    }
+});
+
+function setupOtpRow(rowId, onComplete) {
+    const boxes = document.querySelectorAll('#' + rowId + ' .auth-otp-box');
+    boxes.forEach((box, i) => {
+        box.addEventListener('input', function() {
+            box.classList.remove('wrong', 'correct');
+            if (box.value && i < boxes.length - 1) boxes[i + 1].focus();
+        });
+        box.addEventListener('keydown', function(e) {
+            if (e.key === 'Backspace' && !box.value && i > 0) boxes[i - 1].focus();
+            if (e.key === 'Enter') onComplete();
+        });
+    });
+    return boxes;
+}
+
+function getOtpValue(boxes) {
+    return Array.from(boxes).map(b => b.value).join('');
+}
+
+function markOtpResult(boxes, correct) {
+    boxes.forEach(b => b.classList.add(correct ? 'correct' : 'wrong'));
+    if (!correct) {
+        setTimeout(() => boxes.forEach(b => b.classList.remove('wrong')), 400);
+    }
+}
+
+const signupOtpBoxes = setupOtpRow('signupOtpRow', () => document.getElementById('signupVerifyBtn').click());
+
+let signupResendCountdown = null;
+
+function startSignupTimer() {
+    let t = 30;
+    document.getElementById('signupResendText').style.display = 'block';
+    document.getElementById('signupResendLink').style.display = 'none';
+    document.getElementById('signupTimer').textContent = t + 's';
+
+    clearInterval(signupResendCountdown);
+    signupResendCountdown = setInterval(() => {
+        t--;
+        document.getElementById('signupTimer').textContent = t + 's';
+        if (t <= 0) {
+            clearInterval(signupResendCountdown);
+            document.getElementById('signupResendText').style.display = 'none';
+            document.getElementById('signupResendLink').style.display = 'block';
+        }
+    }, 1000);
+}
+
+document.getElementById('signupResendLink').addEventListener('click', async function() {
+    const formData = new FormData();
+    formData.append('email', signupEmailValue);
+    await fetch('/signup/send-code', { method: 'POST', body: formData });
+    startSignupTimer();
+});
+
+document.getElementById('signupVerifyBtn').addEventListener('click', async function() {
+    const code = getOtpValue(signupOtpBoxes);
+    const errorEl = document.getElementById('signupOtpError');
+    errorEl.textContent = '';
+
+    if (code.length !== 6) {
+        errorEl.textContent = 'Enter the verification code.';
+        return;
+    }
+
+    setLoading(this, 'Verifying...', 'Verify');
+
+    const formData = new FormData();
+    formData.append('email', signupEmailValue);
+    formData.append('code', code);
+
+    try {
+        const res = await fetch('/signup/verify-code', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (data.success) {
+            markOtpResult(signupOtpBoxes, true);
+            setTimeout(() => {
+                document.getElementById('signupStep2').style.display = 'none';
+                document.getElementById('signupStep3').style.display = 'block';
+                document.getElementById('signupName').focus();
+            }, 400);
+        } else {
+            markOtpResult(signupOtpBoxes, false);
+            errorEl.textContent = data.blocked ? data.message : 'The verification code is incorrect.';
+        }
+    } catch {
+        errorEl.textContent = 'Connection failed. Try again.';
+    } finally {
+        clearLoading(this);
+    }
+});
+
+let newAccountScore = 0;
+document.getElementById('signupName').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('signupPassword').focus();
+});
+document.getElementById('signupPassword').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('signupCreateBtn').click();
+});
+
+document.getElementById('signupCreateBtn').addEventListener('click', async function() {
+    const name = document.getElementById('signupName').value.trim();
     const password = document.getElementById('signupPassword').value;
 
     document.getElementById('signupNameError').textContent = '';
-    document.getElementById('signupEmailError').textContent = '';
     document.getElementById('signupPasswordError').textContent = '';
 
     let hasError = false;
-    if (!name) { document.getElementById('signupNameError').textContent = 'Enter your name'; hasError = true; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { document.getElementById('signupEmailError').textContent = 'Enter a valid email'; hasError = true; }
-    if (signupScore < 3) { document.getElementById('signupPasswordError').textContent = 'Password must be Strong'; hasError = true; }
-
+    if (!name) { document.getElementById('signupNameError').textContent = 'Enter your name.'; hasError = true; }
+    if (signupScore < 3) { document.getElementById('signupPasswordError').textContent = 'Choose a stronger password.'; hasError = true; }
     if (hasError) return;
 
-    this.textContent = 'Creating account...';
-    this.disabled = true;
+    setLoading(this, 'Creating account...', 'Create account');
 
     const formData = new FormData();
     formData.append('name', name);
-    formData.append('email', email);
+    formData.append('email', signupEmailValue);
     formData.append('password', password);
 
     try {
@@ -77,17 +230,32 @@ document.getElementById('signupSubmitBtn').addEventListener('click', async funct
         const data = await res.json();
 
         if (data.success) {
-            showToast(true, 'Account created!');
-            setTimeout(() => { window.location.href = '/'; }, 800);
+            showWelcomeScreen();
         } else {
-            document.getElementById('signupEmailError').textContent = data.message;
+            document.getElementById('signupPasswordError').textContent = data.message;
         }
     } catch {
-        showToast(false, 'Connection failed.');
+        document.getElementById('signupPasswordError').textContent = 'Connection failed. Try again.';
     } finally {
-        this.textContent = 'Sign Up';
-        this.disabled = false;
+        clearLoading(this);
     }
+});
+
+function showWelcomeScreen() {
+    document.querySelector('.auth-page-wrap').innerHTML = `
+        <div class="auth-card" style="text-align:center;">
+            <p class="auth-title" style="font-size:22px;">Welcome to JARVIS</p>
+            <p class="auth-subtitle">by Aditya</p>
+        </div>
+    `;
+    setTimeout(() => { window.location.href = '/'; }, 1400);
+}
+
+document.getElementById('loginEmail').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('loginPassword').focus();
+});
+document.getElementById('loginPassword').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('loginSubmitBtn').click();
 });
 
 document.getElementById('loginSubmitBtn').addEventListener('click', async function() {
@@ -98,13 +266,11 @@ document.getElementById('loginSubmitBtn').addEventListener('click', async functi
     document.getElementById('loginPasswordError').textContent = '';
 
     let hasError = false;
-    if (!email) { document.getElementById('loginEmailError').textContent = 'Enter your email'; hasError = true; }
-    if (!password) { document.getElementById('loginPasswordError').textContent = 'Enter your password'; hasError = true; }
-
+    if (!email) { document.getElementById('loginEmailError').textContent = 'Enter your email.'; hasError = true; }
+    if (!password) { document.getElementById('loginPasswordError').textContent = 'Enter your password.'; hasError = true; }
     if (hasError) return;
 
-    this.textContent = 'Logging in...';
-    this.disabled = true;
+    setLoading(this, 'Logging in...', 'Log in');
 
     const formData = new FormData();
     formData.append('email', email);
@@ -120,30 +286,32 @@ document.getElementById('loginSubmitBtn').addEventListener('click', async functi
             document.getElementById('loginPasswordError').textContent = data.message;
         }
     } catch {
-        showToast(false, 'Connection failed.');
+        document.getElementById('loginPasswordError').textContent = 'Connection failed. Try again.';
     } finally {
-        this.textContent = 'Log In';
-        this.disabled = false;
+        clearLoading(this);
     }
 });
-
-let forgotEmailValue = '';
-let resendCountdown = null;
 
 document.getElementById('goToForgot').addEventListener('click', () => showCard('forgotEmailCard'));
 document.getElementById('backToLoginFromEmail').addEventListener('click', () => showCard('loginCard'));
 
+let forgotEmailValue = '';
+
+document.getElementById('forgotEmail').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('sendCodeBtn').click();
+});
+
 document.getElementById('sendCodeBtn').addEventListener('click', async function() {
     const email = document.getElementById('forgotEmail').value.trim();
-    document.getElementById('forgotEmailError').textContent = '';
+    const errorEl = document.getElementById('forgotEmailError');
+    errorEl.textContent = '';
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        document.getElementById('forgotEmailError').textContent = 'Enter a valid email';
+    if (!isValidEmail(email)) {
+        errorEl.textContent = 'Enter a valid email address.';
         return;
     }
 
-    this.textContent = 'Sending...';
-    this.disabled = true;
+    setLoading(this, 'Sending...', 'Send code');
 
     const formData = new FormData();
     formData.append('email', email);
@@ -156,30 +324,34 @@ document.getElementById('sendCodeBtn').addEventListener('click', async function(
             forgotEmailValue = email;
             document.getElementById('otpSentTo').textContent = 'Sent to ' + email;
             showCard('forgotOtpCard');
-            startResendTimer();
+            startForgotTimer();
+            document.querySelector('#forgotOtpRow .auth-otp-box').focus();
         } else {
-            document.getElementById('forgotEmailError').textContent = data.message;
+            errorEl.textContent = data.message;
         }
     } catch {
-        showToast(false, 'Connection failed.');
+        errorEl.textContent = 'Connection failed. Try again.';
     } finally {
-        this.textContent = 'Send Code';
-        this.disabled = false;
+        clearLoading(this);
     }
 });
 
-function startResendTimer() {
-    let timeLeft = 30;
+const forgotOtpBoxes = setupOtpRow('forgotOtpRow', () => document.getElementById('verifyOtpBtn').click());
+
+let forgotResendCountdown = null;
+
+function startForgotTimer() {
+    let t = 30;
     document.getElementById('resendText').style.display = 'block';
     document.getElementById('resendLink').style.display = 'none';
-    document.getElementById('resendTimer').textContent = timeLeft;
+    document.getElementById('resendTimer').textContent = t + 's';
 
-    clearInterval(resendCountdown);
-    resendCountdown = setInterval(() => {
-        timeLeft--;
-        document.getElementById('resendTimer').textContent = timeLeft;
-        if (timeLeft <= 0) {
-            clearInterval(resendCountdown);
+    clearInterval(forgotResendCountdown);
+    forgotResendCountdown = setInterval(() => {
+        t--;
+        document.getElementById('resendTimer').textContent = t + 's';
+        if (t <= 0) {
+            clearInterval(forgotResendCountdown);
             document.getElementById('resendText').style.display = 'none';
             document.getElementById('resendLink').style.display = 'block';
         }
@@ -190,25 +362,20 @@ document.getElementById('resendLink').addEventListener('click', async function()
     const formData = new FormData();
     formData.append('email', forgotEmailValue);
     await fetch('/forgot-password/send-code', { method: 'POST', body: formData });
-    showToast(true, 'New code sent');
-    startResendTimer();
-});
-
-const otpBoxes = document.querySelectorAll('.auth-otp-box');
-otpBoxes.forEach((box, i) => {
-    box.addEventListener('input', function() {
-        if (box.value && i < otpBoxes.length - 1) otpBoxes[i + 1].focus();
-    });
+    startForgotTimer();
 });
 
 document.getElementById('verifyOtpBtn').addEventListener('click', async function() {
-    const code = Array.from(otpBoxes).map(b => b.value).join('');
-    document.getElementById('otpError').textContent = '';
+    const code = getOtpValue(forgotOtpBoxes);
+    const errorEl = document.getElementById('forgotOtpError');
+    errorEl.textContent = '';
 
     if (code.length !== 6) {
-        document.getElementById('otpError').textContent = 'Enter all 6 digits';
+        errorEl.textContent = 'Enter the verification code.';
         return;
     }
+
+    setLoading(this, 'Verifying...', 'Verify');
 
     const formData = new FormData();
     formData.append('email', forgotEmailValue);
@@ -219,15 +386,16 @@ document.getElementById('verifyOtpBtn').addEventListener('click', async function
         const data = await res.json();
 
         if (data.success) {
-            showCard('newPasswordCard');
-        } else if (data.blocked) {
-            showToast(false, data.message);
+            markOtpResult(forgotOtpBoxes, true);
+            setTimeout(() => showCard('newPasswordCard'), 400);
         } else {
-            document.getElementById('otpError').textContent = data.message;
-            otpBoxes.forEach(b => b.style.borderColor = 'var(--danger)');
+            markOtpResult(forgotOtpBoxes, false);
+            errorEl.textContent = data.blocked ? data.message : (data.message.includes('expired') ? 'This code has expired. Request a new one.' : 'The verification code is incorrect.');
         }
     } catch {
-        showToast(false, 'Connection failed.');
+        errorEl.textContent = 'Connection failed. Try again.';
+    } finally {
+        clearLoading(this);
     }
 });
 
@@ -236,22 +404,20 @@ document.getElementById('newPassword').addEventListener('input', function() {
     newPassScore = checkPasswordStrength(this.value, document.getElementById('newBar1'), document.getElementById('newBar2'), document.getElementById('newBar3'));
 });
 
+document.getElementById('confirmPassword').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('updatePasswordBtn').click();
+});
+
 document.getElementById('updatePasswordBtn').addEventListener('click', async function() {
     const password = document.getElementById('newPassword').value;
     const confirm = document.getElementById('confirmPassword').value;
-    document.getElementById('newPasswordError').textContent = '';
+    const errorEl = document.getElementById('newPasswordError');
+    errorEl.textContent = '';
 
-    if (newPassScore < 3) {
-        document.getElementById('newPasswordError').textContent = 'Password must be Strong';
-        return;
-    }
-    if (password !== confirm) {
-        document.getElementById('newPasswordError').textContent = 'Passwords do not match';
-        return;
-    }
+    if (newPassScore < 3) { errorEl.textContent = 'Choose a stronger password.'; return; }
+    if (password !== confirm) { errorEl.textContent = 'Passwords do not match.'; return; }
 
-    this.textContent = 'Updating...';
-    this.disabled = true;
+    setLoading(this, 'Updating...', 'Update password');
 
     const formData = new FormData();
     formData.append('email', forgotEmailValue);
@@ -262,15 +428,13 @@ document.getElementById('updatePasswordBtn').addEventListener('click', async fun
         const data = await res.json();
 
         if (data.success) {
-            showToast(true, 'Password updated!');
-            setTimeout(() => { showCard('loginCard'); }, 1000);
+            showCard('loginCard');
         } else {
-            document.getElementById('newPasswordError').textContent = data.message;
+            errorEl.textContent = data.message;
         }
     } catch {
-        showToast(false, 'Connection failed.');
+        errorEl.textContent = 'Connection failed. Try again.';
     } finally {
-        this.textContent = 'Update Password';
-        this.disabled = false;
+        clearLoading(this);
     }
 });

@@ -6,13 +6,28 @@ from brain import (
     process_command, get_notes, send_feedback_email,
     create_user, verify_login, find_user_by_email,
     generate_reset_code, verify_reset_code, is_reset_verified,
-    update_user_password, clear_reset_code, send_otp_email
+    update_user_password, clear_reset_code, send_otp_email,
+    delete_note
 )
+from models import db, User, Note, ResetCode
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "jarvis-dev-secret-change-this")
 
+database_url = os.getenv("DATABASE_URL", "")
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+db.init_app(app)
+
+with app.app_context():
+    db.create_all()
+
 conversation_history = {}
+
 
 def write_log(user_command, jarvis_response):
     logs_folder = "logs"
@@ -24,6 +39,7 @@ def write_log(user_command, jarvis_response):
     with open(log_file, "a", encoding="utf-8") as file:
         file.write(f"{timestamp} | USER: {user_command} | JARVIS: {jarvis_response}\n")
 
+
 @app.route("/")
 def home():
     if "user_id" not in session:
@@ -33,7 +49,6 @@ def home():
 
 @app.route("/notes", methods=["GET"])
 def get_notes_api():
-
     try:
         if "user_id" not in session:
             return jsonify({"success": False, "error": "Not logged in"})
@@ -46,19 +61,15 @@ def get_notes_api():
         })
 
     except Exception as e:
-
         return jsonify({
             "success": False,
             "error": str(e)
         })
-    
+
+
 @app.route("/notes/delete/<int:note_id>", methods=["DELETE"])
 def delete_note_api(note_id):
-
     try:
-
-        from brain import delete_note
-
         message = delete_note(note_id)
 
         return jsonify({
@@ -67,200 +78,11 @@ def delete_note_api(note_id):
         })
 
     except Exception as e:
-
         return jsonify({
             "success": False,
             "error": str(e)
         })
 
-
-@app.route("/signup", methods=["POST"])
-def signup():
-    try:
-        name = request.form.get("name", "").strip()
-        email = request.form.get("email", "").strip()
-        password = request.form.get("password", "").strip()
-
-        if not name or not email or not password:
-            return jsonify({"success": False, "message": "All fields are required."})
-
-        if len(password) < 8:
-            return jsonify({"success": False, "message": "Password must be at least 8 characters."})
-
-        user, error = create_user(name, email, password)
-
-        if error:
-            return jsonify({"success": False, "message": error})
-
-        session["user_id"] = user["id"]
-        session["user_name"] = user["name"]
-        session.permanent = True
-
-        return jsonify({"success": True, "message": "Account created!", "name": user["name"]})
-
-    except Exception as e:
-        print("SIGNUP ERROR:", e)
-        return jsonify({"success": False, "message": "Something went wrong."})
-
-@app.route("/login", methods=["POST"])
-def login():
-    try:
-        email = request.form.get("email", "").strip()
-        password = request.form.get("password", "").strip()
-
-        if not email or not password:
-            return jsonify({"success": False, "message": "Email and password are required."})
-
-        user = verify_login(email, password)
-
-        if not user:
-            return jsonify({"success": False, "message": "Incorrect email or password."})
-
-        session["user_id"] = user["id"]
-        session["user_name"] = user["name"]
-        session.permanent = True
-
-        return jsonify({"success": True, "name": user["name"]})
-
-    except Exception as e:
-        print("LOGIN ERROR:", e)
-        return jsonify({"success": False, "message": "Something went wrong."})
-    
-@app.route("/logout", methods=["POST"])
-def logout():
-    session.clear()
-    return jsonify({"success": True})
-
-@app.route("/forgot-password/send-code", methods=["POST"])
-def forgot_password_send_code():
-    try:
-        email = request.form.get("email", "").strip()
-
-        if not email:
-            return jsonify({"success": False, "message": "Email is required."})
-
-        user = find_user_by_email(email)
-
-        if not user:
-            return jsonify({"success": False, "message": "No account found with this email."})
-
-        code = generate_reset_code(email)
-        sent = send_otp_email(user["name"], email, code)
-
-        if not sent:
-            return jsonify({"success": False, "message": "Could not send code. Try again."})
-
-        return jsonify({"success": True, "message": "Code sent to your email."})
-
-    except Exception as e:
-        print("SEND CODE ERROR:", e)
-        return jsonify({"success": False, "message": "Something went wrong."})
-    
-@app.route("/forgot-password/verify-code", methods=["POST"])
-def forgot_password_verify_code():
-    try:
-        email = request.form.get("email", "").strip()
-        code = request.form.get("code", "").strip()
-
-        if not email or not code:
-            return jsonify({"success": False, "message": "Code is required."})
-
-        result = verify_reset_code(email, code)
-
-        if result == "correct":
-            return jsonify({"success": True, "message": "Code verified."})
-        elif result == "blocked":
-            return jsonify({"success": False, "message": "Too many attempts. Try again in 10 minutes.", "blocked": True})
-        elif result == "expired":
-            return jsonify({"success": False, "message": "Code expired. Request a new one."})
-        elif result == "incorrect":
-            return jsonify({"success": False, "message": "Incorrect code. Try again."})
-        else:
-            return jsonify({"success": False, "message": "No code was requested for this email."})
-
-    except Exception as e:
-        print("VERIFY CODE ERROR:", e)
-        return jsonify({"success": False, "message": "Something went wrong."})
-
-@app.route("/forgot-password/reset", methods=["POST"])
-def forgot_password_reset():
-    try:
-        email = request.form.get("email", "").strip()
-        new_password = request.form.get("password", "").strip()
-
-        if not email or not new_password:
-            return jsonify({"success": False, "message": "Password is required."})
-
-        if len(new_password) < 8:
-            return jsonify({"success": False, "message": "Password must be at least 8 characters."})
-
-        if not is_reset_verified(email):
-            return jsonify({"success": False, "message": "Please verify your code first."})
-
-        updated = update_user_password(email, new_password)
-
-        if not updated:
-            return jsonify({"success": False, "message": "Could not update password."})
-
-        clear_reset_code(email)
-
-        return jsonify({"success": True, "message": "Password updated!"})
-
-    except Exception as e:
-        print("RESET PASSWORD ERROR:", e)
-        return jsonify({"success": False, "message": "Something went wrong."})    
-
-@app.route("/backup-data-temp-xyz123")
-def backup_data():
-    try:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        with open(os.path.join(base_dir, "users.json"), "r", encoding="utf-8") as f:
-            users_data = f.read()
-        with open(os.path.join(base_dir, "notes.json"), "r", encoding="utf-8") as f:
-            notes_data = f.read()
-        return f"<h3>USERS:</h3><pre>{users_data}</pre><h3>NOTES:</h3><pre>{notes_data}</pre>"
-    except Exception as e:
-        return f"Error: {e}"          
-
-
-@app.route("/feedback", methods=["POST"])
-def feedback():
-    try:
-        name = request.form.get("name", "").strip()
-        description = request.form.get("description", "").strip()
-        image_data = request.form.get("image_data", "").strip()
-        image_filename = request.form.get("image_filename", "").strip()
-
-        if not name or not description:
-            return jsonify({
-                "success": False,
-                "message": "Name and description are required."
-            })
-
-        sent = send_feedback_email(
-            name,
-            description,
-            image_data if image_data else None,
-            image_filename if image_filename else None
-        )
-
-        if sent:
-            return jsonify({
-                "success": True,
-                "message": "Feedback sent."
-            })
-        else:
-            return jsonify({
-                "success": False,
-                "message": "Could not send feedback. Try again."
-            })
-
-    except Exception as e:
-        print("FEEDBACK ROUTE ERROR:", e)
-        return jsonify({
-            "success": False,
-            "message": "Something went wrong."
-        })
 
 @app.route("/command", methods=["POST"])
 def command():
@@ -308,6 +130,275 @@ def command():
             "response": error_response
         })
 
+
+@app.route("/feedback", methods=["POST"])
+def feedback():
+    try:
+        name = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip()
+        image_data = request.form.get("image_data", "").strip()
+        image_filename = request.form.get("image_filename", "").strip()
+
+        if not name or not description:
+            return jsonify({
+                "success": False,
+                "message": "Name and description are required."
+            })
+
+        sent = send_feedback_email(
+            name,
+            description,
+            image_data if image_data else None,
+            image_filename if image_filename else None
+        )
+
+        if sent:
+            return jsonify({
+                "success": True,
+                "message": "Feedback sent."
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "message": "Could not send feedback. Try again."
+            })
+
+    except Exception as e:
+        print("FEEDBACK ROUTE ERROR:", e)
+        return jsonify({
+            "success": False,
+            "message": "Something went wrong."
+        })
+
+@app.route("/signup/send-code", methods=["POST"])
+def signup_send_code():
+    try:
+        email = request.form.get("email", "").strip()
+
+        if not email:
+            return jsonify({"success": False, "message": "Email is required."})
+
+        existing = find_user_by_email(email)
+        if existing:
+            return jsonify({"success": False, "message": "An account with this email already exists."})
+
+        code = generate_reset_code(email)
+        sent = send_otp_email("", email, code, purpose="signup")
+
+        if not sent:
+            return jsonify({"success": False, "message": "Could not send code. Try again."})
+
+        return jsonify({"success": True, "message": "Code sent to your email."})
+
+    except Exception as e:
+        print("SIGNUP SEND CODE ERROR:", e)
+        return jsonify({"success": False, "message": "Something went wrong."})
+
+
+@app.route("/signup/verify-code", methods=["POST"])
+def signup_verify_code():
+    try:
+        email = request.form.get("email", "").strip()
+        code = request.form.get("code", "").strip()
+
+        if not email or not code:
+            return jsonify({"success": False, "message": "Code is required."})
+
+        result = verify_reset_code(email, code)
+
+        if result == "correct":
+            return jsonify({"success": True, "message": "Code verified."})
+        elif result == "blocked":
+            return jsonify({"success": False, "message": "Too many attempts. Try again in 10 minutes.", "blocked": True})
+        elif result == "expired":
+            return jsonify({"success": False, "message": "This code has expired. Request a new one."})
+        elif result == "incorrect":
+            return jsonify({"success": False, "message": "The verification code is incorrect."})
+        else:
+            return jsonify({"success": False, "message": "No code was requested for this email."})
+
+    except Exception as e:
+        print("SIGNUP VERIFY CODE ERROR:", e)
+        return jsonify({"success": False, "message": "Something went wrong."})
+
+@app.route("/signup", methods=["POST"])
+def signup():
+    try:
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "").strip()
+
+        if not name or not email or not password:
+            return jsonify({"success": False, "message": "All fields are required."})
+
+        if len(password) < 8:
+            return jsonify({"success": False, "message": "Password must be at least 8 characters."})
+        
+        if not is_reset_verified(email):
+            return jsonify({"success": False, "message": "Please verify your email first."})
+
+        user, error = create_user(name, email, password)
+
+        if error:
+            return jsonify({"success": False, "message": error})
+
+        session["user_id"] = user.id
+        session["user_name"] = user.name
+        session.permanent = True
+
+        return jsonify({"success": True, "message": "Account created!", "name": user.name})
+
+    except Exception as e:
+        print("SIGNUP ERROR:", e)
+        return jsonify({"success": False, "message": "Something went wrong."})
+
+
+@app.route("/login", methods=["POST"])
+def login():
+    try:
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "").strip()
+
+        if not email or not password:
+            return jsonify({"success": False, "message": "Email and password are required."})
+
+        user = verify_login(email, password)
+
+        if not user:
+            return jsonify({"success": False, "message": "Incorrect email or password."})
+
+        session["user_id"] = user.id
+        session["user_name"] = user.name
+        session.permanent = True
+
+        return jsonify({"success": True, "name": user.name})
+
+    except Exception as e:
+        print("LOGIN ERROR:", e)
+        return jsonify({"success": False, "message": "Something went wrong."})
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return jsonify({"success": True})
+
+
+
+@app.route("/forgot-password/send-code", methods=["POST"])
+def forgot_password_send_code():
+    try:
+        email = request.form.get("email", "").strip()
+
+        if not email:
+            return jsonify({"success": False, "message": "Email is required."})
+
+        user = find_user_by_email(email)
+
+        if not user:
+            return jsonify({"success": False, "message": "No account found with this email."})
+
+        code = generate_reset_code(email)
+        sent = send_otp_email(user.name, email, code)
+
+        if not sent:
+            return jsonify({"success": False, "message": "Could not send code. Try again."})
+
+        return jsonify({"success": True, "message": "Code sent to your email."})
+
+    except Exception as e:
+        print("SEND CODE ERROR:", e)
+        return jsonify({"success": False, "message": "Something went wrong."})
+
+
+@app.route("/forgot-password/verify-code", methods=["POST"])
+def forgot_password_verify_code():
+    try:
+        email = request.form.get("email", "").strip()
+        code = request.form.get("code", "").strip()
+
+        if not email or not code:
+            return jsonify({"success": False, "message": "Code is required."})
+
+        result = verify_reset_code(email, code)
+
+        if result == "correct":
+            return jsonify({"success": True, "message": "Code verified."})
+        elif result == "blocked":
+            return jsonify({"success": False, "message": "Too many attempts. Try again in 10 minutes.", "blocked": True})
+        elif result == "expired":
+            return jsonify({"success": False, "message": "Code expired. Request a new one."})
+        elif result == "incorrect":
+            return jsonify({"success": False, "message": "Incorrect code. Try again."})
+        else:
+            return jsonify({"success": False, "message": "No code was requested for this email."})
+
+    except Exception as e:
+        print("VERIFY CODE ERROR:", e)
+        return jsonify({"success": False, "message": "Something went wrong."})
+
+
+@app.route("/forgot-password/reset", methods=["POST"])
+def forgot_password_reset():
+    try:
+        email = request.form.get("email", "").strip()
+        new_password = request.form.get("password", "").strip()
+
+        if not email or not new_password:
+            return jsonify({"success": False, "message": "Password is required."})
+
+        if len(new_password) < 8:
+            return jsonify({"success": False, "message": "Password must be at least 8 characters."})
+
+        if not is_reset_verified(email):
+            return jsonify({"success": False, "message": "Please verify your code first."})
+
+        updated = update_user_password(email, new_password)
+
+        if not updated:
+            return jsonify({"success": False, "message": "Could not update password."})
+
+        clear_reset_code(email)
+
+        return jsonify({"success": True, "message": "Password updated!"})
+
+    except Exception as e:
+        print("RESET PASSWORD ERROR:", e)
+        return jsonify({"success": False, "message": "Something went wrong."})
+
+@app.route("/update-name", methods=["POST"])
+def update_name():
+    try:
+        if "user_id" not in session:
+            return jsonify({"success": False, "message": "Not logged in."})
+
+        name = request.form.get("name", "").strip()
+
+        if not name:
+            return jsonify({"success": False, "message": "Name is required."})
+
+        user = User.query.get(session["user_id"])
+
+        if not user:
+            return jsonify({"success": False, "message": "User not found."})
+
+        user.name = name
+        db.session.commit()
+
+        session["user_name"] = name
+
+        return jsonify({
+            "success": True,
+            "name": name
+        })
+
+    except Exception as e:
+        print("UPDATE NAME ERROR:", e)
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "message": "Something went wrong."
+        })
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)

@@ -1,16 +1,14 @@
 html, body {
     background: var(--bg-page) !important;
     transition: background-color 0.2s ease !important;
-}
-
-.auth-page-wrap,
-.auth-page-wrap * {
-    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
+    height: 100%;
+    margin: 0;
 }
 
 .auth-page-wrap {
     min-height: 100vh;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     padding: 20px;
@@ -28,40 +26,20 @@ html, body {
     box-shadow: var(--shadow-modal);
     box-sizing: border-box;
     position: relative;
+    margin-bottom: 16px;
 }
 
-.auth-theme-toggle {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    width: 44px !important;
-    height: 26px !important;
-    border-radius: 999px !important;
-    background: var(--border-subtle) !important;
-    border: none !important;
-    outline: none !important;
-    cursor: pointer;
-    padding: 2px !important;
-    margin: 0 !important;
-    display: flex;
-    align-items: center;
-    box-shadow: none !important;
-    min-width: 44px;
-    min-height: 26px;
+.auth-footer {
+    text-align: center;
+    padding: 8px 0;
+    font-size: 11px;
+    color: var(--text-muted);
+    border-top: none;
+    width: 340px;
+    max-width: 100%;
 }
 
-.auth-theme-knob {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: var(--bg-card);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.2s;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-
+/* ---------- REST OF YOUR OLD CSS (KEEP EVERYTHING BELOW) ---------- */
 .auth-icon {
     font-size: 32px;
     color: var(--text-primary);
@@ -340,7 +318,6 @@ html, body {
     transform: scale(0.97);
 }
 
-/* Dark mode logout buttons - NO HOVER */
 body.dark .auth-logout-cancel {
     background: #1f2937;
     color: #e5e7eb;
@@ -363,4 +340,37 @@ body.dark .auth-logout-confirm:hover {
     background: #7f1d1d !important;
     color: #fca5a5 !important;
     border-color: #4b2020 !important;
+}
+
+.auth-theme-toggle {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 40px !important;
+    height: 22px !important;
+    border-radius: 999px !important;
+    background: var(--border-subtle) !important;
+    border: none !important;
+    outline: none !important;
+    cursor: pointer;
+    padding: 2px !important;
+    margin: 0 !important;
+    display: flex;
+    align-items: center;
+    box-shadow: none !important;
+    min-width: 40px;
+    min-height: 22px;
+    z-index: 10;
+}
+
+.auth-theme-knob {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }

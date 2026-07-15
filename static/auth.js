@@ -47,12 +47,17 @@ document.querySelectorAll('.auth-eye-btn').forEach(btn => {
     });
 });
 
-let isDark = false;
-document.getElementById('themeToggle').addEventListener('click', function() {
-    isDark = !isDark;
-    document.body.classList.toggle('dark', isDark);
-    document.getElementById('themeIcon').className = isDark ? 'ti ti-moon' : 'ti ti-sun';
-    document.getElementById('themeKnob').style.transform = isDark ? 'translateX(18px)' : 'translateX(0)';
+// Theme Toggle — Single handler for all cards
+document.querySelectorAll('#themeToggle').forEach(toggle => {
+    toggle.addEventListener('click', function() {
+        const isDark = document.body.classList.toggle('dark');
+        document.querySelectorAll('#themeIcon').forEach(icon => {
+            icon.className = isDark ? 'ti ti-moon' : 'ti ti-sun';
+        });
+        document.querySelectorAll('#themeKnob').forEach(knob => {
+            knob.style.transform = isDark ? 'translateX(18px)' : 'translateX(0)';
+        });
+    });
 });
 
 document.getElementById('goToLogin').addEventListener('click', () => showCard('loginCard'));

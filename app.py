@@ -10,19 +10,34 @@ from brain import (
     delete_note
 )
 from models import db, User, Note, ResetCode
+from feedback import feedback_bp
 
 app = Flask(__name__)
-from feedback import feedback_bp
-app.register_blueprint(feedback_bp, url_prefix='/feedback')
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "jarvis-dev-secret-change-this")
 
+# ---------- DATABASE CONFIG ----------
 database_url = os.getenv("DATABASE_URL", "")
+if database_url and "?" not in database_url:
+    database_url += "?sslmode=require"
 if database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
 
 app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_size": 5,
+    "pool_recycle": 300,
+    "pool_pre_ping": True,
+    "connect_args": {
+        "sslmode": "require",
+        "connect_timeout": 10,
+    }
+}
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+# ---------- REGISTER BLUEPRINTS ----------
+app.register_blueprint(feedback_bp, url_prefix='/feedback')
+
+# ---------- INIT DB ----------
 db.init_app(app)
 
 with app.app_context():
@@ -184,6 +199,7 @@ def signup_verify_code():
         print("SIGNUP VERIFY CODE ERROR:", e)
         return jsonify({"success": False, "message": "Something went wrong."})
 
+
 @app.route("/signup", methods=["POST"])
 def signup():
     try:
@@ -196,7 +212,7 @@ def signup():
 
         if len(password) < 8:
             return jsonify({"success": False, "message": "Password must be at least 8 characters."})
-        
+
         if not is_reset_verified(email):
             return jsonify({"success": False, "message": "Please verify your email first."})
 
@@ -245,7 +261,6 @@ def login():
 def logout():
     session.clear()
     return jsonify({"success": True})
-
 
 
 @app.route("/forgot-password/send-code", methods=["POST"])
@@ -329,6 +344,7 @@ def forgot_password_reset():
         print("RESET PASSWORD ERROR:", e)
         return jsonify({"success": False, "message": "Something went wrong."})
 
+
 @app.route("/update-name", methods=["POST"])
 def update_name():
     try:
@@ -362,6 +378,7 @@ def update_name():
             "success": False,
             "message": "Something went wrong."
         })
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)

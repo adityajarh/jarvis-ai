@@ -378,6 +378,11 @@ def update_name():
             "success": False,
             "message": "Something went wrong."
         })
+    
+@app.route("/force-logout")
+def force_logout():
+    session.clear()
+    return render_template("auth.html")
 
 
 if __name__ == "__main__":

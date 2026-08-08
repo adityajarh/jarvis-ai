@@ -5,6 +5,7 @@ import random
 import webbrowser
 import base64
 import smtplib
+import requests
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -175,49 +176,50 @@ def clear_reset_code(email):
 
 def send_otp_email(name, email, code, purpose="reset"):
     try:
-        sender_email = os.getenv("EMAIL_USER")
-        sender_password = os.getenv("EMAIL_APP_PASSWORD")
+        api_key = os.getenv("BREVO_API_KEY")
 
         if purpose == "signup":
             subject = "Your JARVIS Verification Code"
-            intro = "Welcome to JARVIS.\n\nYour verification code is:"
+            intro = "Welcome to JARVIS.<br><br>Your verification code is:"
             footer = "If you didn't request this verification, you can safely ignore this email."
         else:
             subject = "Your JARVIS Password Reset Code"
             intro = "Your password reset code is:"
             footer = "If you didn't request a password reset, you can safely ignore this email."
 
-        msg = MIMEMultipart()
-        msg["From"] = sender_email
-        msg["To"] = email
-        msg["Subject"] = subject
-
         greeting = f"Hi {name}," if name else "Hi,"
 
-        body = f"""{greeting}
+        html_content = f"""
+        <p>{greeting}</p>
+        <p>{intro}</p>
+        <h2>{code}</h2>
+        <p>This code will expire in 10 minutes.</p>
+        <p>For your security, never share this code with anyone.</p>
+        <p>{footer}</p>
+        <p>— JARVIS</p>
+        """
 
-{intro}
+        response = requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            headers={
+                "accept": "application/json",
+                "api-key": api_key,
+                "content-type": "application/json",
+            },
+            json={
+                "sender": {"name": "JARVIS", "email": "jarhisdevil@gmail.com"},
+                "to": [{"email": email}],
+                "subject": subject,
+                "htmlContent": html_content,
+            },
+            timeout=10,
+        )
 
-    {code}
-
-This code will expire in 10 minutes.
-
-For your security, never share this code with anyone.
-
-{footer}
-
-— JARVIS
-"""
-
-        msg.attach(MIMEText(body, "plain"))
-
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.send_message(msg)
-        server.quit()
-
-        return True
+        if response.status_code in (200, 201):
+            return True
+        else:
+            print("BREVO API ERROR:", response.status_code, response.text)
+            return False
 
     except Exception as e:
         print("OTP EMAIL ERROR:", e)

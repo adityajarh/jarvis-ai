@@ -173,6 +173,20 @@
                 <button id="aboutCloseBtn"><i class="ti ti-x"></i></button>
             </div>
             <div class="about-body">
+                <!-- v2.2.0 -->
+                <div class="about-version">
+                   <span class="about-badge">v2.2.0</span>
+                   <span class="about-date">August 2026</span>
+                <ul>
+                        <li>Fixed signup, login and feedback emails not sending</li>
+                        <li>Switched email system to a reliable delivery service</li>
+                        <li>Feedback emails now send with attachments correctly</li>
+                        <li>Smoother theme switch animation on login page</li>
+                        <li>JARVIS now adapts its tone to how you talk to it</li>
+                </ul>
+                </div>
+                <div class="about-divider"></div>
+
                 <!-- v2.1.1 -->
 <div class="about-version">
     <span class="about-badge">v2.1.1</span>
@@ -253,7 +267,7 @@
     <script src="{{ url_for('feedback.static', filename='feedback.js') }}"></script>
 
     <footer style="text-align: center; padding: 20px 0 10px; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border-subtle); margin-top: 30px;">
-        JARVIS v2.0 · © 2026 Aditya · All rights reserved.
+        JARVIS v2.2.0 · © 2026 Aditya · All rights reserved.
     </footer>
 
 </div>

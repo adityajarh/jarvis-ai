@@ -1,39 +1,53 @@
 import os
 import base64
-import smtplib
+import requests
 import datetime
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.image import MIMEImage
 
 def send_feedback_email(name, description, image_data=None, image_filename=None):
     try:
-        sender_email = os.getenv('EMAIL_USER')
-        sender_password = os.getenv('EMAIL_APP_PASSWORD')
-
-        msg = MIMEMultipart()
-        msg['From'] = sender_email
-        msg['To'] = sender_email
-        msg['Subject'] = f'JARVIS Feedback from {name}'
+        api_key = os.getenv("BREVO_API_KEY")
+        sender_email = os.getenv("EMAIL_USER")
 
         timestamp = datetime.datetime.now().strftime('%d %b %Y %H:%M')
-        body = f'Name: {name}\nTime: {timestamp}\n\nFeedback:\n{description}'
-        msg.attach(MIMEText(body, 'plain'))
+
+        html_content = f"""
+        <p><strong>Name:</strong> {name}</p>
+        <p><strong>Time:</strong> {timestamp}</p>
+        <p><strong>Feedback:</strong></p>
+        <p>{description}</p>
+        """
+
+        payload = {
+            "sender": {"name": "JARVIS", "email": sender_email},
+            "to": [{"email": sender_email}],
+            "subject": f"JARVIS Feedback from {name}",
+            "htmlContent": html_content,
+        }
 
         if image_data:
-            image_bytes = base64.b64decode(image_data.split(',')[1])
-            image = MIMEImage(image_bytes)
-            image.add_header('Content-Disposition', 'attachment', filename=image_filename or 'screenshot.png')
-            msg.attach(image)
+            image_base64 = image_data.split(',')[1] if ',' in image_data else image_data
+            payload["attachment"] = [{
+                "content": image_base64,
+                "name": image_filename or "screenshot.png"
+            }]
 
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.send_message(msg)
-        server.quit()
+        response = requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            headers={
+                "accept": "application/json",
+                "api-key": api_key,
+                "content-type": "application/json",
+            },
+            json=payload,
+            timeout=10,
+        )
 
-        return True
+        if response.status_code in (200, 201):
+            return True
+        else:
+            print("BREVO FEEDBACK ERROR:", response.status_code, response.text)
+            return False
 
     except Exception as e:
-        print('EMAIL ERROR:', e)
+        print("EMAIL ERROR:", e)
         return False

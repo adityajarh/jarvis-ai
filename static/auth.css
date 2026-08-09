@@ -27,6 +27,7 @@ html, body {
     box-sizing: border-box;
     position: relative;
     margin-bottom: 16px;
+    transition: background 0.25s ease;
 }
 
 .auth-footer {

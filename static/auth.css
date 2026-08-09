@@ -5,16 +5,17 @@ html, body {
     margin: 0;
 }
 
-.auth-page-wrap {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
+.auth-card {
+    background: var(--bg-card);
+    border-radius: 24px;
+    width: 340px;
+    max-width: 100%;
+    padding: 32px 28px;
+    box-shadow: var(--shadow-modal);
     box-sizing: border-box;
-    background: var(--bg-page);
-    transition: background 0.25s;
+    position: relative;
+    margin-bottom: 16px;
+    transition: background 0.25s ease, box-shadow 0.25s ease;
 }
 
 .auth-card {

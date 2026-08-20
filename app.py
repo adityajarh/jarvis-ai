@@ -11,6 +11,7 @@ from brain import (
 )
 from models import db, User, Note, ResetCode
 from feedback import feedback_bp
+from chat import chat_bp
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "jarvis-dev-secret-change-this")
@@ -36,6 +37,7 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # ---------- REGISTER BLUEPRINTS ----------
 app.register_blueprint(feedback_bp, url_prefix='/feedback')
+app.register_blueprint(chat_bp, url_prefix='/chat')
 
 # ---------- INIT DB ----------
 db.init_app(app)

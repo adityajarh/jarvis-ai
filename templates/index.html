@@ -6,6 +6,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
     <link rel="stylesheet" href="{{ url_for('feedback.static', filename='feedback.css') }}">
+    <link rel="stylesheet" href="{{ url_for('chat.static', filename='chat.css') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont/tabler-icons.min.css">
 </head>
 
@@ -64,6 +65,32 @@
     <div class="top-actions">
         <button id="notesBtn">Notes</button>
     </div>
+
+    <div class="chat-app">
+    <div class="chat-sidebar" id="chatSidebar">
+        <button class="chat-new-btn" id="chatNewBtn">
+            <i class="ti ti-plus"></i> New chat
+        </button>
+        <div class="chat-conv-list" id="chatConvList"></div>
+    </div>
+    <div class="chat-main">
+        <button class="chat-sidebar-toggle" id="chatSidebarToggle" aria-label="Toggle chat history">
+            <i class="ti ti-menu-2"></i>
+        </button>
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-empty-state">Start a new chat</div>
+        </div>
+        <div class="chat-input-bar">
+            <button class="chat-mic-btn" id="chatMicBtn" title="Voice input">
+                <i class="ti ti-microphone"></i>
+            </button>
+            <input type="text" id="chatInput" placeholder="Message JARVIS">
+            <button class="chat-send-btn" id="chatSendBtn" aria-label="Send message">
+                <i class="ti ti-arrow-up"></i>
+            </button>
+        </div>
+    </div>
+</div>
 
     <div class="command-section">
         <input type="text" id="commandBox" placeholder="Try: open youtube">
@@ -265,6 +292,7 @@
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
     <script src="{{ url_for('feedback.static', filename='feedback.js') }}"></script>
+    <script src="{{ url_for('chat.static', filename='chat.js') }}"></script>
 
     <footer style="text-align: center; padding: 20px 0 10px; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border-subtle); margin-top: 30px;">
         JARVIS v2.2.0 · © 2026 Aditya · All rights reserved.

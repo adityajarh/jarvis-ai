@@ -138,6 +138,10 @@ async function selectConversation(id) {
     }
 }
 
+function renderMarkdownBold(escapedText) {
+    return escapedText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+}
+
 function appendBubble(role, content, time) {
     if (chatMessagesEl.querySelector('.chat-empty-state')) {
         chatMessagesEl.innerHTML = '';
@@ -146,8 +150,12 @@ function appendBubble(role, content, time) {
     const row = document.createElement('div');
     row.className = 'chat-bubble-row ' + (role === 'user' ? 'user' : 'jarvis');
 
+    const safeContent = role === 'user'
+        ? escapeHtml(content)
+        : renderMarkdownBold(escapeHtml(content));
+
     row.innerHTML = `
-        <div class="chat-bubble">${escapeHtml(content)}</div>
+        <div class="chat-bubble">${safeContent}</div>
         <div class="chat-bubble-time">${time || ''}</div>
     `;
 

@@ -2,14 +2,11 @@ import datetime
 import os
 import re
 import random
+import time
+import logging
 import webbrowser
-import base64
-import smtplib
 import requests
 
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.image import MIMEImage
 from werkzeug.security import generate_password_hash, check_password_hash
 from urllib.parse import quote_plus
 from dotenv import load_dotenv
@@ -18,10 +15,16 @@ from models import db, User, Note, ResetCode
 
 load_dotenv()
 
+logger = logging.getLogger("jarvis.brain")
+
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 pending_shutdown = False
 
+
+# =========================================================
+# AUTH / USER
+# =========================================================
 
 def find_user_by_email(email):
     email = email.strip().lower()
@@ -70,15 +73,14 @@ def update_user_password(email, new_password):
     return True
 
 
-def add_note(text, user_id=None):
-    note = Note(
-        user_id=user_id,
-        text=text
-    )
+# =========================================================
+# NOTES
+# =========================================================
 
+def add_note(text, user_id=None):
+    note = Note(user_id=user_id, text=text)
     db.session.add(note)
     db.session.commit()
-
     return "Note saved successfully."
 
 
@@ -112,6 +114,10 @@ def clear_notes():
     db.session.commit()
     return "All notes cleared."
 
+
+# =========================================================
+# PASSWORD RESET / OTP
+# =========================================================
 
 def generate_reset_code(email):
     email = email.strip().lower()
@@ -217,35 +223,42 @@ def send_otp_email(name, email, code, purpose="reset"):
 
         if response.status_code in (200, 201):
             return True
-        else:
-            print("BREVO API ERROR:", response.status_code, response.text)
-            return False
+
+        logger.error("BREVO API ERROR: %s %s", response.status_code, response.text)
+        return False
 
     except Exception as e:
-        print("OTP EMAIL ERROR:", e)
+        logger.error("OTP EMAIL ERROR: %s", e)
         return False
+
+
+# =========================================================
+# LOW-LEVEL ACTION HELPERS
+# =========================================================
 
 def has_word(text, word):
     return re.search(rf"\b{re.escape(word)}\b", text) is not None
 
-def is_command(text, phrases):
-    return any(text == phrase for phrase in phrases)
 
 def open_website(url, message):
     webbrowser.open(url)
     return message
 
+
 def open_app(command, message):
     os.system(command)
     return message
+
 
 def open_windows_app(app_id, message):
     os.system(rf'explorer shell:AppsFolder\{app_id}')
     return message
 
+
 def open_folder(folder_path, message):
     os.startfile(folder_path)
     return message
+
 
 def open_onedrive_desktop_shortcut(shortcut_name, message):
     shortcut_path = os.path.join(
@@ -257,125 +270,367 @@ def open_onedrive_desktop_shortcut(shortcut_name, message):
     os.startfile(shortcut_path)
     return message
 
+
 def google_search(query, message=None):
     safe_query = quote_plus(query)
     webbrowser.open(f"https://www.google.com/search?q={safe_query}")
-
-    if message:
-        return message
-
-    return f"Searching Google for {query}"
+    return message if message else f"Searching Google for {query}"
 
 
-def ask_ai(command, history=None):
-    if history is None:
-        history = []
-
-    try:
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are JARVIS, a helpful AI assistant created by Aditya.\n\n"
-
-                    "IMPORTANT CONVERSATION RULES:\n"
-                    "1. Always read the user's ENTIRE latest message before answering.\n"
-                    "2. Never answer only the first word, greeting, or first phrase of the message.\n"
-                    "3. A message may contain one question, multiple questions, multiple requests, "
-                    "or a greeting followed by questions. Understand all of them.\n"
-                    "4. If there are multiple questions or requests, answer ALL of them.\n"
-                    "5. Preserve the order of the user's questions/requests when answering them.\n"
-                    "6. If the user asks 2, 3, 10, or even 20 things in one message, handle as many "
-                    "as are reasonably possible instead of ignoring the rest.\n"
-                    "7. A greeting such as 'hey', 'hi', or 'hello' at the beginning of a longer "
-                    "message is NOT the main request. Do not stop after replying to the greeting.\n"
-                    "8. If a greeting is followed by a question, acknowledge the greeting briefly "
-                    "and then answer the actual question.\n"
-                    "9. If several questions are clearly connected, give one coherent answer. "
-                    "Otherwise, answer them separately in the same order.\n"
-                    "10. Do not repeat the user's entire message unnecessarily.\n\n"
-
-                    "STYLE:\n"
-                    "Keep answers short, clear, natural, and friendly.\n"
-                    "For normal questions, usually answer in 2 to 5 lines per topic unless "
-                    "the user asks for detail.\n"
-                    "Use bullets or numbering when there are multiple questions so the answers "
-                    "are easy to follow.\n\n"
-
-                    "TONE:\n"
-                    "Read the user's tone from their latest message.\n"
-                    "If the user is casual and uses friendly Hindi/Hinglish slang among friends, "
-                    "match that energy naturally and warmly.\n"
-                    "If the user seems genuinely upset, stressed, or serious, be warm and supportive.\n"
-                    "If the user is formal or professional, stay clean and professional.\n"
-                    "When unsure, default to friendly and respectful.\n\n"
-
-                    "LANGUAGE:\n"
-                    "Detect the language from ONLY the latest user message.\n"
-                    "If it is fully English, reply only in English.\n"
-                    "If it contains Hindi/Hinglish words such as kya, hai, bhai, ka, ko, me, mujhe, "
-                    "bata, samjha, reply naturally in Hinglish.\n"
-                    "Keep technical words in English.\n\n"
-
-                    "REASONING:\n"
-                    "Use conversation history to understand follow-up questions.\n"
-                    "If the user challenges your answer, re-check logically instead of simply agreeing.\n"
-                    "Do not change your answer just to please the user.\n"
-                    "If a question is ambiguous, ask one short clarification question or use the "
-                    "most likely context.\n"
-                    "Do not invent live/current information such as weather, news, prices, cricket "
-                    "scores, train status, or other changing facts. Say when live information is needed."
-                )
-            }
-        ]
-
-        # Add previous conversation history
-        messages.extend(history)
-
-        # Add the COMPLETE latest user message as one message
-        messages.append({
-            "role": "user",
-            "content": command
-        })
-
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=messages,
-            temperature=0.3,
-            max_tokens=500
-        )
-
-        return response.choices[0].message.content.strip()
-
-    except Exception as e:
-        print("GROQ ERROR:", e)
-        return "Sorry, I couldn't connect to my AI brain right now."
+def strip_words(text, words):
+    """Remove whole-word occurrences of the given words from text."""
+    for word in words:
+        text = re.sub(rf"\b{re.escape(word)}\b", "", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
-def process_command(command, history=None, username="Friend", user_id=None):
-    if history is None:
-        history = []
+# =========================================================
+# INTENT MATCHERS
+# =========================================================
+# Small composable matchers instead of one giant if/elif chain.
+# Each matcher takes the lowercased command string and returns True/False.
 
+def match_contains(*keywords):
+    def matcher(command):
+        return any(kw in command for kw in keywords)
+    return matcher
+
+
+def match_word(*words):
+    def matcher(command):
+        return any(has_word(command, w) for w in words)
+    return matcher
+
+
+def match_exact(*phrases):
+    def matcher(command):
+        return command in phrases
+    return matcher
+
+
+def match_startswith(*prefixes):
+    def matcher(command):
+        return any(command.startswith(p) for p in prefixes)
+    return matcher
+
+
+def match_all(*matchers):
+    def matcher(command):
+        return all(m(command) for m in matchers)
+    return matcher
+
+
+def match_short_greeting(*words):
+    """Only treat as a greeting if it's a short, standalone greeting -
+    not a longer message that happens to contain the word."""
+    def matcher(command):
+        if len(command.split()) > 3:
+            return False
+        return any(has_word(command, w) for w in words)
+    return matcher
+
+
+# =========================================================
+# INTENT HANDLERS
+# =========================================================
+
+def handle_help(command, username, user_id):
+    return (
+        "Try: yt, yt search song, search cats, weather in Saharsa, "
+        "news, cricket score, calc, docs, wa, gpt, mail, codex, "
+        "spotify, notepad, vscode, downloads, desktop, lock, shutdown."
+    )
+
+
+def handle_clear_notes(command, username, user_id):
+    return clear_notes()
+
+
+def handle_weather(command, username, user_id):
+    location = strip_words(command, ["weather", "today", "whats", "what's", "what", "is"])
+    location = re.sub(r"^(in|for)\s+", "", location).strip()
+
+    if not location:
+        return "Please tell me the city. Example: weather in Saharsa"
+
+    return google_search(f"weather {location}", f"Opening weather for {location}")
+
+
+def handle_cricket_score(command, username, user_id):
+    return google_search("today cricket score", "Opening today's cricket score")
+
+
+def handle_news(command, username, user_id):
+    topic = strip_words(command, ["news", "today"])
+
+    if topic:
+        return google_search(f"{topic} news today", f"Opening latest news for {topic}")
+
+    return open_website("https://news.google.com", "Opening Google News")
+
+
+def handle_pincode(command, username, user_id):
+    query = strip_words(command, ["pin code", "pincode"])
+
+    if not query:
+        return "Please tell me the place. Example: Saharsa pincode"
+
+    return google_search(f"{query} pincode", f"Searching pincode for {query}")
+
+
+def handle_youtube_search(command, username, user_id):
+    query = strip_words(command, ["youtube search", "yt search"])
+
+    if not query:
+        return "What should I search on YouTube?"
+
+    safe_query = quote_plus(query)
+    return open_website(
+        f"https://www.youtube.com/results?search_query={safe_query}",
+        f"Searching YouTube for {query}",
+    )
+
+
+def handle_youtube_open(command, username, user_id):
+    return open_website("https://youtube.com", "Opening YouTube")
+
+
+def handle_search(command, username, user_id):
+    query = strip_words(command, ["search"])
+
+    if not query:
+        return "Please tell me what to search."
+
+    return google_search(query)
+
+
+def handle_google(command, username, user_id):
+    return open_website("https://google.com", "Opening Google")
+
+
+def handle_calculator(command, username, user_id):
+    return open_app("calc", "Opening Calculator")
+
+
+def handle_notepad(command, username, user_id):
+    return open_app("notepad", "Opening Notepad")
+
+
+def handle_vscode(command, username, user_id):
+    return open_app("code", "Opening Visual Studio Code")
+
+
+def handle_downloads(command, username, user_id):
+    downloads_path = os.path.join(os.environ["USERPROFILE"], "Downloads")
+    return open_folder(downloads_path, "Opening Downloads Folder")
+
+
+def handle_chrome(command, username, user_id):
+    return open_app("start chrome", "Opening Chrome")
+
+
+def handle_chatgpt(command, username, user_id):
+    return open_windows_app(
+        "OpenAI.ChatGPT-Desktop_2p2nqsd0c76g0!ChatGPT",
+        "Opening ChatGPT"
+    )
+
+
+def handle_whatsapp(command, username, user_id):
+    return open_windows_app(
+        "5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App",
+        "Opening WhatsApp"
+    )
+
+
+def handle_codex(command, username, user_id):
+    return open_windows_app(
+        "OpenAI.Codex_2p2nqsd0c76g0!App",
+        "Opening Codex"
+    )
+
+
+def handle_documents(command, username, user_id):
+    documents_path = os.path.join(os.environ["USERPROFILE"], "Documents")
+    return open_folder(documents_path, "Opening Documents Folder")
+
+
+def handle_gmail(command, username, user_id):
+    return open_onedrive_desktop_shortcut("Gmail.lnk", "Opening Gmail")
+
+
+def handle_spotify(command, username, user_id):
+    return open_onedrive_desktop_shortcut("Spotify.lnk", "Opening Spotify")
+
+
+def handle_desktop(command, username, user_id):
+    desktop_path = os.path.join(os.environ["USERPROFILE"], "OneDrive", "Desktop")
+    return open_folder(desktop_path, "Opening Desktop")
+
+
+def handle_how_are_you(command, username, user_id):
+    return "Systems operational. Feeling awesome."
+
+
+def handle_date_and_time(command, username, user_id):
+    now = datetime.datetime.now()
+    return f"Current date is {now.strftime('%Y-%m-%d')} and time is {now.strftime('%H:%M:%S')}"
+
+
+def handle_time(command, username, user_id):
+    return f"Current time is {datetime.datetime.now().strftime('%H:%M:%S')}"
+
+
+def handle_date(command, username, user_id):
+    return f"Current date is {datetime.datetime.now().strftime('%Y-%m-%d')}"
+
+
+def handle_creator(command, username, user_id):
+    return "My creator is Aditya."
+
+
+def handle_who_are_you(command, username, user_id):
+    return "I am JARVIS, created by Aditya."
+
+
+def handle_who_made_you(command, username, user_id):
+    return "I was made by Aditya."
+
+
+def handle_lock(command, username, user_id):
+    os.system("rundll32.exe user32.dll,LockWorkStation")
+    return "Locking the system."
+
+
+def handle_confirm_shutdown(command, username, user_id):
     global pending_shutdown
 
-    command = command.lower().strip()
+    if pending_shutdown:
+        pending_shutdown = False
+        os.system("shutdown /s /t 5")
+        return "Shutting down in 5 seconds."
 
-    if not command:
-        return "Please type a command."
+    return "No shutdown was requested."
 
-    note_prefixes = [
-        "note ",
-        "save note ",
-        "add note ",
-        "remember ",
-        "write down ",
-        "yaad rakh ",
-        "likh lo "
-    ]
 
-    for prefix in note_prefixes:
+def handle_cancel_shutdown(command, username, user_id):
+    global pending_shutdown
+    pending_shutdown = False
+    return "Shutdown cancelled."
+
+
+def handle_shutdown(command, username, user_id):
+    global pending_shutdown
+    pending_shutdown = True
+    return "Are you sure? Type 'confirm shutdown' to proceed or 'cancel shutdown' to cancel."
+
+
+def handle_hello(command, username, user_id):
+    return f"Hello {username}!"
+
+
+def handle_hi(command, username, user_id):
+    return f"Hi {username}!"
+
+
+def handle_hey(command, username, user_id):
+    return f"Hey {username}!"
+
+
+# =========================================================
+# INTENT REGISTRY
+# =========================================================
+# Order matters: evaluated top to bottom, first match wins.
+# Specific / real questions are placed before greetings on purpose,
+# so a message like "hey buddy who made you" matches "who made you"
+# before it ever reaches the greeting check.
+
+INTENTS = [
+    (match_exact("clear notes"), handle_clear_notes),
+    (match_exact("help", "commands", "what can you do"), handle_help),
+
+    (match_contains("weather"), handle_weather),
+    (match_contains("cricket score"), handle_cricket_score),
+    (match_contains("news"), handle_news),
+    (match_contains("pin code", "pincode"), handle_pincode),
+
+    (match_all(match_contains("youtube"), match_contains("search")), handle_youtube_search),
+    (match_startswith("yt search"), handle_youtube_search),
+    (match_all(match_word("youtube"), match_exact("yt", "open yt")), handle_youtube_open),
+    (match_word("youtube"), handle_youtube_open),
+    (match_exact("yt", "open yt"), handle_youtube_open),
+
+    (match_contains("search"), handle_search),
+    (match_contains("google"), handle_google),
+
+    (match_all(match_word("calculator"), match_exact("calc", "open calc")), handle_calculator),
+    (match_word("calculator"), handle_calculator),
+    (match_exact("calc", "open calc"), handle_calculator),
+
+    (match_contains("notepad"), handle_notepad),
+    (match_contains("vs code"), handle_vscode),
+    (match_word("vscode"), handle_vscode),
+    (match_contains("code editor"), handle_vscode),
+
+    (match_word("downloads"), handle_downloads),
+    (match_contains("download folder"), handle_downloads),
+
+    (match_contains("chrome"), handle_chrome),
+
+    (match_word("chatgpt"), handle_chatgpt),
+    (match_contains("chat gpt"), handle_chatgpt),
+    (match_exact("gpt", "open gpt"), handle_chatgpt),
+
+    (match_word("whatsapp"), handle_whatsapp),
+    (match_exact("wa", "open wa"), handle_whatsapp),
+
+    (match_contains("codex"), handle_codex),
+
+    (match_contains("documents", "docs"), handle_documents),
+
+    (match_word("gmail"), handle_gmail),
+    (match_exact("mail", "open mail"), handle_gmail),
+
+    (match_contains("spotify"), handle_spotify),
+    (match_contains("desktop"), handle_desktop),
+
+    (match_contains("how are you"), handle_how_are_you),
+
+    (match_all(match_contains("date"), match_contains("time")), handle_date_and_time),
+    (match_contains("time"), handle_time),
+    (match_contains("date"), handle_date),
+
+    (match_contains("creator"), handle_creator),
+    (match_contains("who made you"), handle_who_made_you),
+    (match_contains("who are you"), handle_who_are_you),
+
+    (match_contains("lock"), handle_lock),
+    (match_contains("confirm shutdown"), handle_confirm_shutdown),
+    (match_contains("cancel shutdown"), handle_cancel_shutdown),
+    (match_contains("shutdown"), handle_shutdown),
+
+    # Greetings LAST - only fire for short, standalone greetings.
+    # Anything longer (a real question) is already handled above.
+    (match_short_greeting("hello"), handle_hello),
+    (match_short_greeting("hi"), handle_hi),
+    (match_short_greeting("hey"), handle_hey),
+]
+
+
+NOTE_PREFIXES = [
+    "note ",
+    "save note ",
+    "add note ",
+    "remember ",
+    "write down ",
+    "yaad rakh ",
+    "likh lo "
+]
+
+
+def try_note_command(command, user_id):
+    for prefix in NOTE_PREFIXES:
         if command.startswith(prefix):
-
             note_text = command[len(prefix):].strip()
 
             if not note_text:
@@ -383,193 +638,124 @@ def process_command(command, history=None, username="Friend", user_id=None):
 
             return add_note(note_text, user_id)
 
-    if has_word(command, "hello"):
-        return f"Hello {username}!"
-
-    elif has_word(command, "hi"):
-        return f"Hi {username}!"
-
-    elif has_word(command, "hey"):
-        return f"Hey {username}!"
+    return None
 
 
-    elif command == "clear notes":
-        return clear_notes()
-    
-    elif command in ["help", "commands", "what can you do"]:
-        return (
-            "Try: yt, yt search song, search cats, weather in Saharsa, "
-            "news, cricket score, calc, docs, wa, gpt, mail, codex, "
-            "spotify, notepad, vscode, downloads, desktop, lock, shutdown."
-        )
-    
-    elif "weather" in command:
-        location = command.replace("weather", "").replace("today", "").strip()
+# =========================================================
+# AI FALLBACK
+# =========================================================
 
-        if location.startswith("in "):
-            location = location[3:].strip()
+SYSTEM_PROMPT = (
+    "You are JARVIS, a helpful AI assistant created by Aditya.\n\n"
 
-        if not location:
-            return "Please tell me the city. Example: weather in Saharsa"
+    "IMPORTANT CONVERSATION RULES:\n"
+    "1. Always read the user's ENTIRE latest message before answering.\n"
+    "2. Never answer only the first word, greeting, or first phrase of the message.\n"
+    "3. A message may contain one question, multiple questions, multiple requests, "
+    "or a greeting followed by questions. Understand all of them.\n"
+    "4. If there are multiple questions or requests, answer ALL of them.\n"
+    "5. Preserve the order of the user's questions/requests when answering them.\n"
+    "6. If the user asks 2, 3, 10, or even 20 things in one message, handle as many "
+    "as are reasonably possible instead of ignoring the rest.\n"
+    "7. A greeting such as 'hey', 'hi', or 'hello' at the beginning of a longer "
+    "message is NOT the main request. Do not stop after replying to the greeting.\n"
+    "8. If a greeting is followed by a question, acknowledge the greeting briefly "
+    "and then answer the actual question.\n"
+    "9. If several questions are clearly connected, give one coherent answer. "
+    "Otherwise, answer them separately in the same order.\n"
+    "10. Do not repeat the user's entire message unnecessarily.\n\n"
 
-        return google_search(
-            f"weather {location}",
-            f"Opening weather for {location}",
-        )
+    "STYLE:\n"
+    "Keep answers short, clear, natural, and friendly.\n"
+    "For normal questions, usually answer in 2 to 5 lines per topic unless "
+    "the user asks for detail.\n"
+    "Use bullets or numbering when there are multiple questions so the answers "
+    "are easy to follow.\n\n"
 
-    elif "cricket score" in command or "today cricket score" in command:
-        return google_search(
-            "today cricket score",
-            "Opening today's cricket score",
-        )
+    "TONE:\n"
+    "Read the user's tone from their latest message.\n"
+    "If the user is casual and uses friendly Hindi/Hinglish slang among friends, "
+    "match that energy naturally and warmly.\n"
+    "If the user seems genuinely upset, stressed, or serious, be warm and supportive.\n"
+    "If the user is formal or professional, stay clean and professional.\n"
+    "When unsure, default to friendly and respectful.\n\n"
 
-    elif "news" in command:
-        topic = command.replace("news", "").replace("today", "").strip()
+    "LANGUAGE:\n"
+    "Detect the language from ONLY the latest user message.\n"
+    "If it is fully English, reply only in English.\n"
+    "If it contains Hindi/Hinglish words such as kya, hai, bhai, ka, ko, me, mujhe, "
+    "bata, samjha, reply naturally in Hinglish.\n"
+    "Keep technical words in English.\n\n"
 
-        if topic:
-            return google_search(
-                f"{topic} news today",
-                f"Opening latest news for {topic}",
+    "REASONING:\n"
+    "Use conversation history to understand follow-up questions.\n"
+    "If the user challenges your answer, re-check logically instead of simply agreeing.\n"
+    "Do not change your answer just to please the user.\n"
+    "If a question is ambiguous, ask one short clarification question or use the "
+    "most likely context.\n"
+    "Do not invent live/current information such as weather, news, prices, cricket "
+    "scores, train status, or other changing facts. Say when live information is needed."
+)
+
+
+def ask_ai(command, history=None):
+    if history is None:
+        history = []
+
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    messages.extend(history)
+    messages.append({"role": "user", "content": command})
+
+    last_error = None
+
+    for attempt in range(2):
+        try:
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=messages,
+                temperature=0.3,
+                max_tokens=500,
             )
+            return response.choices[0].message.content.strip()
 
-        return open_website(
-            "https://news.google.com",
-            "Opening Google News",
-        )
+        except Exception as e:
+            last_error = e
+            status_code = getattr(e, "status_code", None)
+            logger.error("GROQ ERROR (attempt %s): %s", attempt + 1, e)
 
-    elif "pin code" in command or "pincode" in command:
-        query = command.replace("pin code", "").replace("pincode", "").strip()
+            if status_code == 401:
+                return "My AI connection isn't set up correctly right now. Please tell Aditya."
 
-        if not query:
-            return "Please tell me the place. Example: Saharsa pincode"
+            if status_code == 429:
+                return "I'm getting a lot of requests right now. Please try again in a moment."
 
-        return google_search(
-            f"{query} pincode",
-            f"Searching pincode for {query}",
-        )
+            if attempt == 0:
+                time.sleep(1)
+                continue
 
-    elif "youtube search" in command or command.startswith("yt search"):
-        query = command.replace("youtube search", "").replace("yt search", "").strip()
+    logger.error("GROQ ERROR (final): %s", last_error)
+    return "Sorry, I couldn't connect to my AI brain right now."
 
-        if not query:
-            return "What should I search on YouTube?"
 
-        safe_query = quote_plus(query)
-        return open_website(
-            f"https://www.youtube.com/results?search_query={safe_query}",
-            f"Searching YouTube for {query}",
-        )
+# =========================================================
+# MAIN ENTRY POINT
+# =========================================================
 
-    elif has_word(command, "youtube") or is_command(command, ["yt", "open yt"]):
-        return open_website("https://youtube.com", "Opening YouTube")
-    
-    elif "search" in command:
-        query = command.replace("search", "").strip()
+def process_command(command, history=None, username="Friend", user_id=None):
+    if history is None:
+        history = []
 
-        if not query:
-            return "Please tell me what to search."
+    command = command.lower().strip()
 
-        return google_search(query)
+    if not command:
+        return "Please type a command."
 
-    elif "google" in command:
-        return open_website("https://google.com", "Opening Google")
+    note_response = try_note_command(command, user_id)
+    if note_response is not None:
+        return note_response
 
-    elif has_word(command, "calculator") or is_command(command, ["calc", "open calc"]):
-        return open_app("calc", "Opening Calculator")
+    for matcher, handler in INTENTS:
+        if matcher(command):
+            return handler(command, username, user_id)
 
-    elif "notepad" in command:
-        return open_app("notepad", "Opening Notepad")
-
-    elif "vs code" in command or has_word(command, "vscode") or "code editor" in command:
-        return open_app("code", "Opening Visual Studio Code")
-
-    elif has_word(command, "downloads") or "download folder" in command:
-        downloads_path = os.path.join(os.environ["USERPROFILE"], "Downloads")
-        return open_folder(downloads_path, "Opening Downloads Folder")
-
-    elif "chrome" in command:
-        return open_app("start chrome", "Opening Chrome")
-
-    elif has_word(command, "chatgpt") or "chat gpt" in command or is_command(command, ["gpt", "open gpt"]):
-        return open_windows_app(
-            "OpenAI.ChatGPT-Desktop_2p2nqsd0c76g0!ChatGPT",
-            "Opening ChatGPT"
-        )
-
-    elif has_word(command, "whatsapp") or is_command(command, ["wa", "open wa"]):
-        return open_windows_app(
-            "5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App",
-            "Opening WhatsApp"
-        )
-
-    elif "codex" in command:
-        return open_windows_app(
-            "OpenAI.Codex_2p2nqsd0c76g0!App",
-            "Opening Codex"
-        )
-
-    elif "documents" in command or "docs" in command:
-        documents_path = os.path.join(os.environ["USERPROFILE"], "Documents")
-        return open_folder(documents_path, "Opening Documents Folder")
-
-    elif has_word(command, "gmail") or is_command(command, ["mail", "open mail"]):
-        return open_onedrive_desktop_shortcut("Gmail.lnk", "Opening Gmail")
-
-    elif "spotify" in command:
-        return open_onedrive_desktop_shortcut("Spotify.lnk", "Opening Spotify")
-
-    elif "desktop" in command:
-        desktop_path = os.path.join(
-            os.environ["USERPROFILE"],
-            "OneDrive",
-            "Desktop"
-        )
-        return open_folder(desktop_path, "Opening Desktop")
-    
-    elif "how are you" in command:
-        return "Systems operational. Feeling awesome."
-
-    elif "date" in command and "time" in command:
-        current_time = datetime.datetime.now().strftime("%H:%M:%S")
-        current_date = datetime.datetime.now().strftime("%Y-%m-%d")
-        return f"Current date is {current_date} and time is {current_time}"
-
-    elif "time" in command:
-        current_time = datetime.datetime.now().strftime("%H:%M:%S")
-        return f"Current time is {current_time}"
-
-    elif "date" in command:
-        current_date = datetime.datetime.now().strftime("%Y-%m-%d")
-        return f"Current date is {current_date}"
-
-    elif "creator" in command:
-        return "My creator is Aditya."
-
-    elif "who are you" in command:
-        return "I am JARVIS, created by Aditya."
-
-    elif "who made you" in command:
-        return "I was made by Aditya."
-
-    elif "lock" in command:
-        os.system("rundll32.exe user32.dll,LockWorkStation")
-        return "Locking the system."
-
-    elif "confirm shutdown" in command:
-        if pending_shutdown:
-            pending_shutdown = False
-            os.system("shutdown /s /t 5")
-            return "Shutting down in 5 seconds."
-
-        return "No shutdown was requested."
-
-    elif "cancel shutdown" in command:
-        pending_shutdown = False
-        return "Shutdown cancelled."
-
-    elif "shutdown" in command:
-        pending_shutdown = True
-        return "Are you sure? Type 'confirm shutdown' to proceed or 'cancel shutdown' to cancel."
-
-    else:
-        return ask_ai(command, history)
+    return ask_ai(command, history)

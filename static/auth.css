@@ -376,3 +376,25 @@ body.dark .auth-logout-confirm:hover {
     transition: transform 0.2s;
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
+
+.auth-db-reset-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    background: rgba(0, 122, 255, 0.08);
+    border: 1px solid rgba(0, 122, 255, 0.25);
+    color: var(--text-primary);
+    font-size: 12.5px;
+    line-height: 1.5;
+    padding: 12px 14px;
+    border-radius: 12px;
+    max-width: 340px;
+    margin-bottom: 14px;
+}
+
+.auth-db-reset-note i {
+    font-size: 16px;
+    color: var(--accent);
+    margin-top: 1px;
+    flex-shrink: 0;
+}

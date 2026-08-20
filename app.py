@@ -63,6 +63,13 @@ def write_log(user_command, jarvis_response):
 def home():
     if "user_id" not in session:
         return render_template("auth.html")
+
+    user = User.query.get(session["user_id"])
+
+    if not user:
+        session.clear()
+        return render_template("auth.html", db_reset=True)
+
     return render_template("index.html")
 
 

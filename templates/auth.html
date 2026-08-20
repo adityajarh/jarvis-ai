@@ -11,6 +11,13 @@
 
 <div class="auth-page-wrap">
 
+    {% if db_reset %}
+<div class="auth-db-reset-note">
+    <i class="ti ti-info-circle"></i>
+    <span>We've upgraded our systems and your old account needs to be created again. Sorry for the inconvenience — it'll only take a minute.</span>
+</div>
+{% endif %}
+
     <div id="signupCard" class="auth-card">
         <button class="auth-theme-toggle" id="themeToggle">
             <span class="auth-theme-knob" id="themeKnob"><i class="ti ti-sun" id="themeIcon"></i></span>

@@ -320,12 +320,8 @@ def match_all(*matchers):
     return matcher
 
 
-def match_short_greeting(*words):
-    """Only treat as a greeting if it's a short, standalone greeting -
-    not a longer message that happens to contain the word."""
+def match_greeting(*words):
     def matcher(command):
-        if len(command.split()) > 3:
-            return False
         return any(has_word(command, w) for w in words)
     return matcher
 
@@ -536,6 +532,17 @@ def handle_hi(command, username, user_id):
 def handle_hey(command, username, user_id):
     return f"Hey {username}!"
 
+def handle_good_morning(command, username, user_id):
+    return f"Good morning, {username}!"
+
+
+def handle_good_evening(command, username, user_id):
+    return f"Good evening, {username}!"
+
+
+def handle_good_afternoon(command, username, user_id):
+    return f"Good afternoon, {username}!"
+
 
 # =========================================================
 # INTENT REGISTRY
@@ -611,6 +618,12 @@ INTENTS = [
 
     # Greetings LAST - only fire for short, standalone greetings.
     # Anything longer (a real question) is already handled above.
+    (match_contains("good morning"), handle_good_morning),
+    (match_contains("good evening"), handle_good_evening),
+    (match_contains("good afternoon"), handle_good_afternoon),
+    (match_greeting("hello"), handle_hello),
+    (match_greeting("hi"), handle_hi),
+    (match_greeting("hey"), handle_hey),
     (match_short_greeting("hello"), handle_hello),
     (match_short_greeting("hi"), handle_hi),
     (match_short_greeting("hey"), handle_hey),

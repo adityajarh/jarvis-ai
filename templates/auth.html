@@ -11,12 +11,6 @@
 
 <div class="auth-page-wrap">
 
-    {% if db_reset %}
-<div class="auth-db-reset-note">
-    <i class="ti ti-info-circle"></i>
-    <span>We've upgraded our systems and your old account needs to be created again. Sorry for the inconvenience — it'll only take a minute.</span>
-</div>
-{% endif %}
 
     <div id="signupCard" class="auth-card">
         <button class="auth-theme-toggle" id="themeToggle">
@@ -173,6 +167,17 @@
         <button class="auth-submit-btn" id="updatePasswordBtn">Update password</button>
         <p class="auth-switch" id="backToLoginFromNew" style="color:var(--accent); cursor:pointer; margin-top:16px;">Back to login</p>
     </div>
+
+        {% if db_reset %}
+    <div class="auth-db-reset-note">
+        <i class="ti ti-info-circle"></i>
+        <span>We've upgraded our systems and your old account needs to be created again. Sorry for the inconvenience — it'll only take a minute.</span>
+    </div>
+    {% endif %}
+
+    <footer class="auth-footer">
+        JARVIS v2.0 · © 2026 Aditya · All rights reserved.
+    </footer>
 
     <footer class="auth-footer">
         JARVIS v2.0 · © 2026 Aditya · All rights reserved.
